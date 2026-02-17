@@ -183,6 +183,15 @@ def test_invoice_and_payment_endpoints() -> None:
         invoices = invoice_list.json()
         assert any(x["invoice_id"] == invoice_body["invoice_id"] for x in invoices)
 
+        invoice_patch = client.patch(
+            f"/api/v1/invoices/{invoice_body['invoice_id']}",
+            json={"paid_amount": 300000},
+        )
+        assert invoice_patch.status_code == 200
+        patched_invoice = invoice_patch.json()
+        assert patched_invoice["remaining_amount"] == 0
+        assert patched_invoice["status"] == "✅入金済"
+
         payment_create = client.post(
             "/api/v1/payments",
             json={
@@ -202,3 +211,23 @@ def test_invoice_and_payment_endpoints() -> None:
         assert payment_list.status_code == 200
         payments = payment_list.json()
         assert any(x["payment_id"] == payment_body["payment_id"] for x in payments)
+
+        payment_patch = client.patch(
+            f"/api/v1/payments/{payment_body['payment_id']}",
+            json={"paid_amount": 120000},
+        )
+        assert payment_patch.status_code == 200
+        patched_payment = payment_patch.json()
+        assert patched_payment["remaining_amount"] == 0
+        assert patched_payment["status"] == "✅支払済"
+
+
+def test_dashboard_summary() -> None:
+    with TestClient(app) as client:
+        resp = client.get("/api/v1/dashboard/summary")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["project_total"] >= 1
+        assert isinstance(body["project_status_counts"], dict)
+        assert body["invoice_total_amount"] >= 0
+        assert body["payment_total_amount"] >= 0

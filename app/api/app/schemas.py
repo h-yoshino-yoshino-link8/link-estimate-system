@@ -119,6 +119,14 @@ class InvoiceRead(BaseModel):
     note: Optional[str] = None
 
 
+class InvoiceUpdate(BaseModel):
+    invoice_amount: Optional[float] = Field(default=None, ge=0)
+    paid_amount: Optional[float] = Field(default=None, ge=0)
+    status: Optional[str] = None
+    note: Optional[str] = None
+    billed_at: Optional[date] = None
+
+
 class PaymentCreate(BaseModel):
     project_id: str
     payment_id: Optional[str] = None
@@ -144,3 +152,23 @@ class PaymentRead(BaseModel):
     status: Optional[str] = None
     note: Optional[str] = None
     paid_at: Optional[date] = None
+
+
+class PaymentUpdate(BaseModel):
+    ordered_amount: Optional[float] = Field(default=None, ge=0)
+    paid_amount: Optional[float] = Field(default=None, ge=0)
+    status: Optional[str] = None
+    note: Optional[str] = None
+    paid_at: Optional[date] = None
+    vendor_name: Optional[str] = None
+    work_description: Optional[str] = None
+
+
+class DashboardSummaryResponse(BaseModel):
+    project_total: int
+    project_status_counts: dict[str, int]
+    invoice_total_amount: float
+    invoice_remaining_amount: float
+    payment_total_amount: float
+    payment_remaining_amount: float
+    item_total_amount: float

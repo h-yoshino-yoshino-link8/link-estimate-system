@@ -46,6 +46,16 @@ export type Payment = {
   note?: string | null;
 };
 
+export type DashboardSummary = {
+  project_total: number;
+  project_status_counts: Record<string, number>;
+  invoice_total_amount: number;
+  invoice_remaining_amount: number;
+  payment_total_amount: number;
+  payment_remaining_amount: number;
+  item_total_amount: number;
+};
+
 export async function getCustomers() {
   const res = await fetch(`${API_BASE}/api/v1/customers`, { cache: "no-store" });
   if (!res.ok) throw new Error("顧客一覧の取得に失敗しました");
@@ -150,6 +160,27 @@ export async function createInvoice(payload: {
   return (await res.json()) as Invoice;
 }
 
+export async function updateInvoice(
+  invoiceId: string,
+  payload: {
+    paid_amount?: number;
+    invoice_amount?: number;
+    status?: string;
+    note?: string;
+  },
+) {
+  const res = await fetch(`${API_BASE}/api/v1/invoices/${encodeURIComponent(invoiceId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`請求更新に失敗しました: ${body}`);
+  }
+  return (await res.json()) as Invoice;
+}
+
 export async function getPayments(projectId?: string) {
   const search = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
   const res = await fetch(`${API_BASE}/api/v1/payments${search}`, { cache: "no-store" });
@@ -175,6 +206,33 @@ export async function createPayment(payload: {
     throw new Error(`支払登録に失敗しました: ${body}`);
   }
   return (await res.json()) as Payment;
+}
+
+export async function updatePayment(
+  paymentId: string,
+  payload: {
+    paid_amount?: number;
+    ordered_amount?: number;
+    status?: string;
+    note?: string;
+  },
+) {
+  const res = await fetch(`${API_BASE}/api/v1/payments/${encodeURIComponent(paymentId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`支払更新に失敗しました: ${body}`);
+  }
+  return (await res.json()) as Payment;
+}
+
+export async function getDashboardSummary() {
+  const res = await fetch(`${API_BASE}/api/v1/dashboard/summary`, { cache: "no-store" });
+  if (!res.ok) throw new Error("ダッシュボード集計取得に失敗しました");
+  return (await res.json()) as DashboardSummary;
 }
 
 export async function exportEstimate(projectId: string) {

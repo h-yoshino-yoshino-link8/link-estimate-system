@@ -19,8 +19,11 @@
 - `POST /api/v1/projects/{project_id}/items`
 - `GET /api/v1/invoices`
 - `POST /api/v1/invoices`
+- `PATCH /api/v1/invoices/{invoice_id}`
 - `GET /api/v1/payments`
 - `POST /api/v1/payments`
+- `PATCH /api/v1/payments/{payment_id}`
+- `GET /api/v1/dashboard/summary`
 
 ## Local Run (without Docker)
 

@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import CORS_ORIGINS
 from .database import Base, SessionLocal, engine
-from .routers import customers, documents, finance, projects, sync, work_items
+from .routers import customers, dashboard, documents, finance, projects, sync, work_items
 from .seed import seed_data
 
 app = FastAPI(title="Link Estimate System API", version="0.1.0")
@@ -42,3 +42,4 @@ app.include_router(documents.router, prefix="/api/v1")
 app.include_router(sync.router, prefix="/api/v1")
 app.include_router(work_items.router, prefix="/api/v1")
 app.include_router(finance.router, prefix="/api/v1")
+app.include_router(dashboard.router, prefix="/api/v1")

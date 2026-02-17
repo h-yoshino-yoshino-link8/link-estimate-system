@@ -10,11 +10,15 @@ import {
   exportEstimate,
   exportReceipt,
   getCustomers,
+  getDashboardSummary,
   getInvoices,
   getPayments,
   getProjectItems,
   getWorkItems,
   syncExcel,
+  updateInvoice,
+  updatePayment,
+  type DashboardSummary,
   type Invoice,
   type Payment,
   type ProjectItem,
@@ -32,6 +36,7 @@ export default function HomePage() {
   const [projectItems, setProjectItems] = useState<ProjectItem[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
 
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [loadingWorkItems, setLoadingWorkItems] = useState(true);
@@ -60,6 +65,11 @@ export default function HomePage() {
   const [paymentVendorName, setPaymentVendorName] = useState("テスト業者");
   const [paymentOrderedAmount, setPaymentOrderedAmount] = useState("50000");
   const [paymentPaidAmount, setPaymentPaidAmount] = useState("0");
+
+  const [invoiceToUpdate, setInvoiceToUpdate] = useState("");
+  const [invoicePaidToUpdate, setInvoicePaidToUpdate] = useState("0");
+  const [paymentToUpdate, setPaymentToUpdate] = useState("");
+  const [paymentPaidToUpdate, setPaymentPaidToUpdate] = useState("0");
 
   const [message, setMessage] = useState("");
   const [working, setWorking] = useState(false);
@@ -91,12 +101,36 @@ export default function HomePage() {
   };
 
   const loadFinance = async (targetProjectId: string) => {
-    const [invoiceRows, paymentRows] = await Promise.all([
-      getInvoices(targetProjectId),
-      getPayments(targetProjectId),
-    ]);
+    const [invoiceRows, paymentRows] = await Promise.all([getInvoices(targetProjectId), getPayments(targetProjectId)]);
     setInvoices(invoiceRows);
     setPayments(paymentRows);
+
+    const selectedInvoice = invoiceRows.find((x) => x.invoice_id === invoiceToUpdate);
+    if (selectedInvoice) {
+      setInvoicePaidToUpdate(String(selectedInvoice.paid_amount));
+    } else if (invoiceRows.length > 0) {
+      setInvoiceToUpdate(invoiceRows[0].invoice_id);
+      setInvoicePaidToUpdate(String(invoiceRows[0].paid_amount));
+    } else {
+      setInvoiceToUpdate("");
+      setInvoicePaidToUpdate("0");
+    }
+
+    const selectedPayment = paymentRows.find((x) => x.payment_id === paymentToUpdate);
+    if (selectedPayment) {
+      setPaymentPaidToUpdate(String(selectedPayment.paid_amount));
+    } else if (paymentRows.length > 0) {
+      setPaymentToUpdate(paymentRows[0].payment_id);
+      setPaymentPaidToUpdate(String(paymentRows[0].paid_amount));
+    } else {
+      setPaymentToUpdate("");
+      setPaymentPaidToUpdate("0");
+    }
+  };
+
+  const loadSummary = async () => {
+    const data = await getDashboardSummary();
+    setSummary(data);
   };
 
   useEffect(() => {
@@ -124,6 +158,7 @@ export default function HomePage() {
       try {
         await loadProjectItems("P-003");
         await loadFinance("P-003");
+        await loadSummary();
       } catch {
         // ignore initial load errors
       }
@@ -155,6 +190,7 @@ export default function HomePage() {
       setSiteAddress("");
       await loadProjectItems(created.project_id);
       await loadFinance(created.project_id);
+      await loadSummary();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "案件作成に失敗しました");
     } finally {
@@ -198,6 +234,7 @@ export default function HomePage() {
       await loadCustomers();
       await loadWorkItems();
       await loadFinance(projectIdForInvoice);
+      await loadSummary();
       setMessage(
         `同期完了: 顧客${result.customers_upserted} / 案件${result.projects_upserted} / 請求${result.invoices_upserted} / 支払${result.payments_upserted} / 項目${result.work_items_upserted}`,
       );
@@ -222,6 +259,7 @@ export default function HomePage() {
         quantity: Number(itemQuantity || "1"),
       });
       await loadProjectItems(projectIdForItem);
+      await loadSummary();
       setMessage("案件明細を追加しました");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "案件明細追加に失敗しました");
@@ -242,6 +280,7 @@ export default function HomePage() {
       });
       setInvoiceIdForPdf(created.invoice_id);
       await loadFinance(projectIdForInvoice);
+      await loadSummary();
       setMessage(`請求を登録しました: ${created.invoice_id}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "請求登録に失敗しました");
@@ -262,9 +301,54 @@ export default function HomePage() {
         status: "❌未支払",
       });
       await loadFinance(projectIdForPayment);
+      await loadSummary();
       setMessage(`支払を登録しました: ${created.payment_id}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "支払登録に失敗しました");
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const onSettleInvoice = async () => {
+    if (!invoiceToUpdate) {
+      setMessage("更新対象の請求IDを選択してください");
+      return;
+    }
+
+    setWorking(true);
+    setMessage("");
+    try {
+      const updated = await updateInvoice(invoiceToUpdate, {
+        paid_amount: Number(invoicePaidToUpdate || "0"),
+      });
+      await loadFinance(updated.project_id);
+      await loadSummary();
+      setMessage(`請求を更新しました: ${updated.invoice_id} / ${updated.status}`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "請求更新に失敗しました");
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const onSettlePayment = async () => {
+    if (!paymentToUpdate) {
+      setMessage("更新対象の支払IDを選択してください");
+      return;
+    }
+
+    setWorking(true);
+    setMessage("");
+    try {
+      const updated = await updatePayment(paymentToUpdate, {
+        paid_amount: Number(paymentPaidToUpdate || "0"),
+      });
+      await loadFinance(updated.project_id);
+      await loadSummary();
+      setMessage(`支払を更新しました: ${updated.payment_id} / ${updated.status}`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "支払更新に失敗しました");
     } finally {
       setWorking(false);
     }
@@ -288,6 +372,7 @@ export default function HomePage() {
     setMessage("");
     try {
       await loadFinance(projectIdForInvoice);
+      await loadSummary();
       setMessage("請求/支払一覧を再読込しました");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "請求/支払取得に失敗しました");
@@ -301,10 +386,32 @@ export default function HomePage() {
       <section className="hero">
         <p className="eyebrow">LinK Estimate System</p>
         <h1>操作パネル (MVP)</h1>
-        <p className="sub">新規案件作成・Excel同期・明細登録・請求/支払登録・帳票PDF出力。</p>
+        <p className="sub">新規案件作成・Excel同期・明細登録・請求/支払更新・帳票PDF出力。</p>
       </section>
 
       <section className="grid">
+        <article className="panel">
+          <h2>ダッシュボード集計</h2>
+          <div className="items-box">
+            <p className="item-row">案件数: {summary?.project_total ?? 0}</p>
+            <p className="item-row">請求合計: ¥{(summary?.invoice_total_amount ?? 0).toLocaleString()}</p>
+            <p className="item-row">請求残額: ¥{(summary?.invoice_remaining_amount ?? 0).toLocaleString()}</p>
+            <p className="item-row">支払合計: ¥{(summary?.payment_total_amount ?? 0).toLocaleString()}</p>
+            <p className="item-row">支払残額: ¥{(summary?.payment_remaining_amount ?? 0).toLocaleString()}</p>
+            <p className="item-row">明細合計: ¥{(summary?.item_total_amount ?? 0).toLocaleString()}</p>
+            {summary
+              ? Object.entries(summary.project_status_counts).map(([status, count]) => (
+                  <p className="item-row" key={status}>
+                    {status}: {count}
+                  </p>
+                ))
+              : null}
+          </div>
+          <button onClick={onReloadFinance} disabled={working}>
+            集計を更新
+          </button>
+        </article>
+
         <article className="panel">
           <h2>Excel同期</h2>
           <label>
@@ -443,6 +550,62 @@ export default function HomePage() {
         </article>
 
         <article className="panel">
+          <h2>請求消込更新</h2>
+          <label>
+            請求ID
+            <select
+              value={invoiceToUpdate}
+              onChange={(e) => {
+                setInvoiceToUpdate(e.target.value);
+                const matched = invoices.find((x) => x.invoice_id === e.target.value);
+                if (matched) setInvoicePaidToUpdate(String(matched.paid_amount));
+              }}
+            >
+              {invoices.map((inv) => (
+                <option key={inv.invoice_id} value={inv.invoice_id}>
+                  {inv.invoice_id} / 残¥{inv.remaining_amount.toLocaleString()}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            更新後入金額
+            <input value={invoicePaidToUpdate} onChange={(e) => setInvoicePaidToUpdate(e.target.value)} />
+          </label>
+          <button onClick={onSettleInvoice} disabled={working}>
+            請求を更新
+          </button>
+        </article>
+
+        <article className="panel">
+          <h2>支払消込更新</h2>
+          <label>
+            支払ID
+            <select
+              value={paymentToUpdate}
+              onChange={(e) => {
+                setPaymentToUpdate(e.target.value);
+                const matched = payments.find((x) => x.payment_id === e.target.value);
+                if (matched) setPaymentPaidToUpdate(String(matched.paid_amount));
+              }}
+            >
+              {payments.map((pay) => (
+                <option key={pay.payment_id} value={pay.payment_id}>
+                  {pay.payment_id} / 残¥{pay.remaining_amount.toLocaleString()}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            更新後支払額
+            <input value={paymentPaidToUpdate} onChange={(e) => setPaymentPaidToUpdate(e.target.value)} />
+          </label>
+          <button onClick={onSettlePayment} disabled={working}>
+            支払を更新
+          </button>
+        </article>
+
+        <article className="panel">
           <h2>請求/支払一覧</h2>
           <button onClick={onReloadFinance} disabled={working}>
             一覧を再読込
@@ -451,12 +614,12 @@ export default function HomePage() {
             {invoices.slice(0, 5).map((inv) => (
               <p key={inv.invoice_id} className="item-row">
                 請求 {inv.invoice_id} / ¥{inv.invoice_amount.toLocaleString()} / 残¥
-                {inv.remaining_amount.toLocaleString()}
+                {inv.remaining_amount.toLocaleString()} / {inv.status ?? "-"}
               </p>
             ))}
             {payments.slice(0, 5).map((pay) => (
               <p key={pay.payment_id} className="item-row">
-                支払 {pay.payment_id} / {pay.vendor_name ?? "-"} / 残¥{pay.remaining_amount.toLocaleString()}
+                支払 {pay.payment_id} / {pay.vendor_name ?? "-"} / 残¥{pay.remaining_amount.toLocaleString()} / {pay.status ?? "-"}
               </p>
             ))}
           </div>

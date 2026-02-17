@@ -1,8 +1,8 @@
 # Execution Log (2026-02-17)
 
-- Timestamp: 2026-02-17 18:23:28 JST
+- Timestamp: 2026-02-17 18:33:29 JST
 - Branch: codex/build-link-estimate-system
-- Head: 2e3cac6
+- Head: a96bf64
 
 ## Python compile check
 - Command: python3 -m py_compile scripts/build_workbook.py scripts/validate_workbook.py
@@ -29,7 +29,7 @@ Reminder: import VBA module and assign buttons in Excel UI.
 
 ## API tests
 - Command: env PYTHONPATH=app/api python3 -m pytest -q app/api/tests
-.......                                                                  [100%]
+........                                                                 [100%]
 =============================== warnings summary ===============================
 app/api/app/main.py:24
   /Users/yoshinohiroshi/Library/Mobile Documents/iCloud~md~obsidian/Documents/情報オブシディアン/100_Cursor/link-estimate-system/app/api/app/main.py:24: DeprecationWarning: 
@@ -50,7 +50,7 @@ app/api/app/main.py:24
     return self.router.on_event(event_type)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-7 passed, 2 warnings in 0.75s
+8 passed, 2 warnings in 0.69s
 - Result: PASS
 
 ## Web build
@@ -74,7 +74,7 @@ app/api/app/main.py:24
    Collecting build traces ...
 
 Route (app)                              Size     First Load JS
-┌ ○ /                                    4.05 kB        91.2 kB
+┌ ○ /                                    4.83 kB        91.9 kB
 └ ○ /_not-found                          875 B            88 kB
 + First Load JS shared by all            87.1 kB
   ├ chunks/23-c61e312c20c04c5e.js        31.5 kB
@@ -89,16 +89,11 @@ Route (app)                              Size     First Load JS
 ## Git status (short)
  M app/README.md
  M app/api/app/main.py
- M app/api/app/models.py
- M app/api/app/routers/sync.py
+ M app/api/app/routers/finance.py
  M app/api/app/schemas.py
- M app/api/app/seed.py
- M app/api/app/services/excel_sync.py
- M app/api/app/services/id_generator.py
  M app/api/tests/test_api.py
  M app/web/app/page.tsx
  M app/web/lib/api.ts
- M "docs/APP\345\256\237\350\243\205\350\250\210\347\224\273_20260217.md"
  M docs/EXECUTION_LOG_20260217.md
-?? app/api/app/routers/finance.py
+?? app/api/app/routers/dashboard.py
 
