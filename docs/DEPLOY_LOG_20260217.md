@@ -14,3 +14,11 @@
 - Inspect URL: https://vercel.com/h-yoshino-link-8jps-projects/web/J4PVmtjyprrvbRYYZ5iBUjzqAZhW
 - Production URL: https://web-4zvu39gun-h-yoshino-link-8jps-projects.vercel.app
 - Public health check (`curl -I`): `401` (Vercel deployment protection enabled)
+
+## Manual Deploy (2026-02-17 19:43 JST)
+- Branch: codex/build-link-estimate-system
+- Head: eeea1af
+- Command: `vercel --prod --yes` (cwd: `app/web`)
+- Inspect URL: https://vercel.com/h-yoshino-link-8jps-projects/web/EQgcratYkp947NPohfhwPVssaY1o
+- Production URL: https://web-opa6u40re-h-yoshino-link-8jps-projects.vercel.app
+- Public health check (`curl -I`): `401` (Vercel deployment protection enabled)
