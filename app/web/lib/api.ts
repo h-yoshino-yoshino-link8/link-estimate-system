@@ -10,6 +10,24 @@ export type WorkItemMaster = {
   standard_unit_price: number;
 };
 
+export type Project = {
+  project_id: string;
+  project_sheet_name: string;
+  customer_id: string;
+  customer_name: string;
+  project_name: string;
+  site_address?: string | null;
+  owner_name: string;
+  target_margin_rate: number;
+  project_status: string;
+  created_at: string;
+};
+
+export type ProjectListResponse = {
+  items: Project[];
+  total: number;
+};
+
 export type ProjectItem = {
   id: number;
   project_id: string;
@@ -109,6 +127,16 @@ export async function createProject(payload: {
     throw new Error(`案件作成に失敗しました: ${body}`);
   }
   return res.json();
+}
+
+export async function getProjects(params?: { customer_id?: string; status?: string }) {
+  const search = new URLSearchParams();
+  if (params?.customer_id) search.set("customer_id", params.customer_id);
+  if (params?.status) search.set("status", params.status);
+  const qs = search.toString();
+  const res = await fetch(`${API_BASE}/api/v1/projects${qs ? `?${qs}` : ""}`, { cache: "no-store" });
+  if (!res.ok) throw new Error("案件一覧の取得に失敗しました");
+  return (await res.json()) as ProjectListResponse;
 }
 
 export async function syncExcel(workbookPath?: string) {
