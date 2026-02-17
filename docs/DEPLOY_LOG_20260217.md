@@ -86,3 +86,15 @@
   - Cockpit: KPI labels clarified to 見積金額/請求金額/入金済/原価(発注額)/粗利見込, margin warning when below target rate, current-step highlight pulse on step chips, single primary CTA in next-action banner, subcard titles for invoice/payment split forms, payment summary table inline, category-colored audit log badges (見積=green, 請求=blue, 支払=orange, 帳票=purple)
   - Documents: preview loading state indicator, improved PDF error messages with retry guidance
   - CSS: field-error/input-error, message-error/message-success, fm-btn-primary, fm-kpi-warn, fm-step-chip.is-current pulse animation, fm-subcard-title, table-total-row, focus ring on inputs
+
+## Vercel Deploy (2026-02-18 08:48:00 JST)
+- Project: `h-yoshino-link-8jps-projects/web`
+- Commit: `80438fc`
+- Production URL: https://web-ocn5y7f9n-h-yoshino-link-8jps-projects.vercel.app
+- Access check: `HTTP 200`
+- Changes (Complete UI/UX redesign — Design System v2):
+  - globals.css: Rebuilt from scratch with CSS custom properties design system (emerald green theme, modern SaaS aesthetic, Inter/Hiragino font stack, shadow/radius/spacing tokens)
+  - Projects page: 2-column layout (340px sticky form sidebar + scrollable project list), card containers, improved table with badges, empty state with icon
+  - Cockpit: Replaced 3-column FileMaker layout with tab-based design (見積/請求・入金/支払/書類・連絡), KPI card row, step progress bar, next-action banner with tab navigation, collapsible audit log
+  - Added responsive breakpoints (1024px, 680px) for tablet and mobile
+  - All existing functionality preserved (CRUD, PDF, mail, audit log)

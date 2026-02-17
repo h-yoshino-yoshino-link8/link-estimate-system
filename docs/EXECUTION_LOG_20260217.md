@@ -194,3 +194,30 @@ Route (app)                                 Size  First Load JS
   - Payment create/update: OK
   - PDF export (estimate/receipt): OK
   - Mail draft: OK
+
+## Complete UI/UX redesign — Design System v2
+- Timestamp: 2026-02-18 08:48:00 JST
+- Branch: `main`
+- Commit: `80438fc`
+- Files:
+  - `app/web/app/globals.css` (complete rewrite)
+  - `app/web/app/projects/page.tsx` (rewritten)
+  - `app/web/app/projects/[projectId]/page.tsx` (rewritten)
+- Build command: `npm --prefix app/web run build`
+- Build result: PASS (Compiled successfully in 916ms, all 6 pages generated)
+- Deploy URL: https://web-ocn5y7f9n-h-yoshino-link-8jps-projects.vercel.app
+- Access check: HTTP 200
+- Design changes:
+  - CSS Design System v2: CSS custom properties, emerald green brand, Inter/Hiragino fonts, modern shadows/radius/spacing tokens
+  - Projects page: 2-column layout (340px sticky form + scrollable list), card containers, clean table, empty state
+  - Cockpit: Tab-based navigation (見積/請求・入金/支払/書類), KPI card row, step progress bar, next-action banner, collapsible audit log
+  - Responsive: breakpoints at 1024px (tablet) and 680px (mobile)
+  - Removed all old `fm-*` FileMaker classes
+- Existing functionality preserved:
+  - Project creation (local mode): OK
+  - Estimate item add: OK
+  - Invoice create/update: OK
+  - Payment create/update: OK
+  - PDF export (estimate/receipt): OK
+  - Mail draft: OK
+  - Audit log: OK
