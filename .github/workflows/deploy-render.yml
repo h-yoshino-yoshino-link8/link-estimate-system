@@ -8,28 +8,37 @@ on:
 
 jobs:
   deploy:
-    if: ${{ secrets.RENDER_API_DEPLOY_HOOK_URL != '' || secrets.RENDER_WEB_DEPLOY_HOOK_URL != '' }}
     runs-on: ubuntu-latest
+    env:
+      RENDER_API_DEPLOY_HOOK_URL: ${{ secrets.RENDER_API_DEPLOY_HOOK_URL }}
+      RENDER_WEB_DEPLOY_HOOK_URL: ${{ secrets.RENDER_WEB_DEPLOY_HOOK_URL }}
+      DEPLOY_API_HEALTH_URL: ${{ secrets.DEPLOY_API_HEALTH_URL }}
+      DEPLOY_WEB_HEALTH_URL: ${{ secrets.DEPLOY_WEB_HEALTH_URL }}
     steps:
       - name: Trigger API deploy
-        if: ${{ secrets.RENDER_API_DEPLOY_HOOK_URL != '' }}
-        env:
-          URL: ${{ secrets.RENDER_API_DEPLOY_HOOK_URL }}
-        run: curl -fsS -X POST "$URL"
+        run: |
+          if [ -z "$RENDER_API_DEPLOY_HOOK_URL" ]; then
+            echo "Skip API deploy hook (secret not set)"
+            exit 0
+          fi
+          curl -fsS -X POST "$RENDER_API_DEPLOY_HOOK_URL"
 
       - name: Trigger Web deploy
-        if: ${{ secrets.RENDER_WEB_DEPLOY_HOOK_URL != '' }}
-        env:
-          URL: ${{ secrets.RENDER_WEB_DEPLOY_HOOK_URL }}
-        run: curl -fsS -X POST "$URL"
+        run: |
+          if [ -z "$RENDER_WEB_DEPLOY_HOOK_URL" ]; then
+            echo "Skip Web deploy hook (secret not set)"
+            exit 0
+          fi
+          curl -fsS -X POST "$RENDER_WEB_DEPLOY_HOOK_URL"
 
       - name: Wait API health
-        if: ${{ secrets.DEPLOY_API_HEALTH_URL != '' }}
-        env:
-          URL: ${{ secrets.DEPLOY_API_HEALTH_URL }}
         run: |
+          if [ -z "$DEPLOY_API_HEALTH_URL" ]; then
+            echo "Skip API health check (secret not set)"
+            exit 0
+          fi
           for i in $(seq 1 36); do
-            code="$(curl -s -o /tmp/api-health.txt -w '%{http_code}' "$URL" || true)"
+            code="$(curl -s -o /tmp/api-health.txt -w '%{http_code}' "$DEPLOY_API_HEALTH_URL" || true)"
             if [ "$code" = "200" ]; then
               echo "API healthy"
               cat /tmp/api-health.txt
@@ -41,12 +50,13 @@ jobs:
           exit 1
 
       - name: Wait Web health
-        if: ${{ secrets.DEPLOY_WEB_HEALTH_URL != '' }}
-        env:
-          URL: ${{ secrets.DEPLOY_WEB_HEALTH_URL }}
         run: |
+          if [ -z "$DEPLOY_WEB_HEALTH_URL" ]; then
+            echo "Skip Web health check (secret not set)"
+            exit 0
+          fi
           for i in $(seq 1 36); do
-            code="$(curl -s -o /tmp/web-health.txt -w '%{http_code}' "$URL" || true)"
+            code="$(curl -s -o /tmp/web-health.txt -w '%{http_code}' "$DEPLOY_WEB_HEALTH_URL" || true)"
             if [ "$code" = "200" ]; then
               echo "Web healthy"
               exit 0

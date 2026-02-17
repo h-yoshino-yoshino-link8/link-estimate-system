@@ -1,8 +1,8 @@
 # Execution Log (2026-02-17)
 
-- Timestamp: 2026-02-17 18:40:46 JST
+- Timestamp: 2026-02-17 18:44:00 JST
 - Branch: codex/build-link-estimate-system
-- Head: e9e64f4
+- Head: 12edfe8
 
 ## Python compile check
 - Command: python3 -m py_compile scripts/build_workbook.py scripts/validate_workbook.py
@@ -50,7 +50,7 @@ app/api/app/main.py:24
     return self.router.on_event(event_type)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-9 passed, 2 warnings in 1.03s
+9 passed, 2 warnings in 0.71s
 - Result: PASS
 
 ## Web build
@@ -87,18 +87,6 @@ Route (app)                              Size     First Load JS
 - Result: PASS
 
 ## Git status (short)
- M README.md
- M app/README.md
- M app/api/app/routers/sync.py
- M app/api/tests/test_api.py
- M app/docker-compose.yml
- M app/web/app/page.tsx
- M app/web/lib/api.ts
- M app/web/next.config.mjs
+ M .github/workflows/deploy-render.yml
  M docs/EXECUTION_LOG_20260217.md
- M scripts/commit_and_push.sh
-?? .github/
-?? docs/DEPLOYMENT_PERSONAL.md
-?? render.yaml
-?? scripts/deploy_and_log.sh
 
