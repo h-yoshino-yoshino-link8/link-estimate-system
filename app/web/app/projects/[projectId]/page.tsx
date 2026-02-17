@@ -65,6 +65,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   "帳票": "cat-document",
 };
 
+type TabKey = "estimate" | "invoice" | "payment" | "docs";
+
 export default function ProjectWorkspacePage() {
   const params = useParams<{ projectId: string }>();
   const projectId = params.projectId;
@@ -84,6 +86,8 @@ export default function ProjectWorkspacePage() {
   const [previewTitle, setPreviewTitle] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [showAuditLog, setShowAuditLog] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>("estimate");
 
   const [masterItemId, setMasterItemId] = useState("");
   const [itemQuantity, setItemQuantity] = useState("1");
@@ -103,6 +107,7 @@ export default function ProjectWorkspacePage() {
   const [paymentPaidToUpdate, setPaymentPaidToUpdate] = useState("0");
   const [invoiceIdForPdf, setInvoiceIdForPdf] = useState("");
 
+  /* --- Derived values --- */
   const estimateTotal = useMemo(
     () => projectItems.reduce((sum, row) => sum + Number(row.line_total || 0), 0),
     [projectItems],
@@ -144,45 +149,21 @@ export default function ProjectWorkspacePage() {
 
   const nextAction = useMemo(() => {
     if (!stepEstimateDone) {
-      return {
-        step: 1,
-        title: "見積明細を追加してください",
-        detail: "左列の「見積を作る」で工事項目を選び「明細追加」を押します。",
-        anchor: "#step-estimate",
-      };
+      return { step: 1, title: "見積明細を追加してください", detail: "工事項目を選び「明細追加」を押します。", tab: "estimate" as TabKey };
     }
     if (!stepInvoiceDone) {
-      return {
-        step: 2,
-        title: "請求を登録してください",
-        detail: "中央列の「請求登録」で請求額を入力し登録します。",
-        anchor: "#step-invoice",
-      };
+      return { step: 2, title: "請求を登録してください", detail: "請求額を入力し登録します。", tab: "invoice" as TabKey };
     }
     if (!stepInvoiceSettled) {
-      return {
-        step: 2,
-        title: "入金反映を完了してください",
-        detail: "更新対象請求IDを選び、入金額を更新して未入金残を0にします。",
-        anchor: "#step-invoice",
-      };
+      return { step: 2, title: "入金反映を完了してください", detail: "入金額を更新して未入金残を0にします。", tab: "invoice" as TabKey };
     }
     if (!stepPaymentDone) {
-      return {
-        step: 3,
-        title: "業者支払を登録してください",
-        detail: "右列の「支払登録」で業者名と発注額を入力し登録します。",
-        anchor: "#step-payment",
-      };
+      return { step: 3, title: "業者支払を登録してください", detail: "業者名と発注額を入力し登録します。", tab: "payment" as TabKey };
     }
-    return {
-      step: 4,
-      title: "書類発行・連絡へ進めます",
-      detail: "見積書/領収書PDFの出力と請求メール文面作成を実行できます。",
-      anchor: "#step-docs",
-    };
+    return { step: 4, title: "書類発行・連絡へ進めます", detail: "見積書/領収書PDFの出力と請求メール文面作成を実行できます。", tab: "docs" as TabKey };
   }, [stepEstimateDone, stepInvoiceDone, stepInvoiceSettled, stepPaymentDone]);
 
+  /* --- Data loading --- */
   const loadWorkspace = async () => {
     const [projectResp, workItemsResp, itemsResp, invoicesResp, paymentsResp] = await Promise.all([
       getProject(projectId),
@@ -251,11 +232,8 @@ export default function ProjectWorkspacePage() {
     };
   }, [previewUrl]);
 
-  const appendAuditLog = (
-    category: AuditLogEntry["category"],
-    action: string,
-    detail: string,
-  ) => {
+  /* --- Helpers --- */
+  const appendAuditLog = (category: AuditLogEntry["category"], action: string, detail: string) => {
     if (typeof window === "undefined") return;
     const entry: AuditLogEntry = {
       id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
@@ -284,6 +262,7 @@ export default function ProjectWorkspacePage() {
     setPreviewTitle(title);
   };
 
+  /* --- Actions --- */
   const onReload = async () => {
     setWorking(true);
     setMessage("");
@@ -475,453 +454,531 @@ export default function ProjectWorkspacePage() {
     showMsg("メール文面を生成しました（メーラーが開きます）", "success");
   };
 
+  /* --- Loading state --- */
   if (loading) {
     return (
       <main className="page">
-        <section className="panel">
-          <h2>案件ワークスペースを読み込み中...</h2>
-        </section>
+        <div className="card" style={{ textAlign: "center", padding: 48 }}>
+          <p className="text-muted">案件ワークスペースを読み込み中...</p>
+        </div>
       </main>
     );
   }
 
+  /* --- Render --- */
   return (
     <main className="page">
-      <section className="fm-shell fm-shell-simple">
-        {/* Header */}
-        <header className="fm-header">
-          <div className="fm-title-wrap">
-            <h1>案件コックピット</h1>
-            <p>
-              <span className="id-mono">{projectId}</span> / <strong>{project?.project_name ?? "-"}</strong>
-            </p>
-            <p>
-              顧客: {project?.customer_name ?? "-"} / 担当: {project?.owner_name ?? "-"} / ステータス:{" "}
-              <span className="status-badge-ws">{project?.project_status ?? "-"}</span>
-            </p>
-          </div>
-          <div className="fm-head-actions">
-            <Link href="/projects" className="fm-btn fm-btn-ghost">
-              案件一覧に戻る
-            </Link>
-            <button className="fm-btn fm-btn-ghost" onClick={onReload} disabled={working}>
-              再読込
-            </button>
-          </div>
-        </header>
+      {/* Cockpit Header */}
+      <div className="cockpit-header">
+        <div className="cockpit-meta">
+          <h1>{project?.project_name ?? "-"}</h1>
+          <p>
+            <span className="id-mono">{projectId}</span>
+            {" "}
+            顧客: {project?.customer_name ?? "-"} / 担当: {project?.owner_name ?? "-"} / ステータス:{" "}
+            <span className="badge badge-default">{project?.project_status ?? "-"}</span>
+          </p>
+        </div>
+        <div className="cockpit-actions">
+          <Link href="/projects" className="btn btn-ghost" style={{ textDecoration: "none" }}>
+            案件一覧
+          </Link>
+          <button className="btn" onClick={onReload} disabled={working}>
+            再読込
+          </button>
+        </div>
+      </div>
 
-        {/* KPI Row */}
-        <section className="fm-kpi-row">
-          <article className="fm-kpi">
-            <span>見積金額</span>
-            <strong>{yen(estimateTotal)}</strong>
-            <span>{projectItems.length}明細</span>
-          </article>
-          <article className="fm-kpi">
-            <span>請求金額</span>
-            <strong>{yen(invoiceTotal)}</strong>
-            <span>{invoices.length}件</span>
-          </article>
-          <article className="fm-kpi">
-            <span>入金済</span>
-            <strong>{yen(settledSales)}</strong>
-            <span>未回収 {yen(invoiceRemaining)}</span>
-          </article>
-          <article className="fm-kpi">
-            <span>原価（発注額）</span>
-            <strong>{yen(paymentTotal)}</strong>
-            <span>未払 {yen(paymentRemaining)}</span>
-          </article>
-          <article className={`fm-kpi ${marginWarning ? "fm-kpi-warn" : ""}`}>
-            <span>粗利見込</span>
-            <strong>{yen(grossEstimate)}</strong>
-            <span>利益率 {grossRate.toFixed(1)}%{marginWarning ? ` (目標 ${targetMarginRate.toFixed(0)}% 未達)` : ""}</span>
-          </article>
-        </section>
+      {localMode ? <div className="warning-bar">ローカルモード: このブラウザ内に保存されます（サーバー未接続）</div> : null}
 
-        {localMode ? <p className="warning">ローカルモード: このブラウザ内に保存されます（サーバー未接続）。</p> : null}
+      {message ? (
+        <div className={`message animate-in ${messageType === "error" ? "message-error" : ""} ${messageType === "success" ? "message-success" : ""}`}>
+          {message}
+        </div>
+      ) : null}
 
-        {/* Next Action Banner */}
-        <section className="fm-action-banner">
-          <div>
-            <p className="fm-action-label">次にやること</p>
-            <strong>STEP {nextAction.step}: {nextAction.title}</strong>
-            <p className="fm-step-note">{nextAction.detail}</p>
-            <div className="fm-step-chips">
-              <span className={`fm-step-chip ${stepEstimateDone ? "is-done" : nextAction.step === 1 ? "is-current" : ""}`}>1. 見積</span>
-              <span className={`fm-step-chip ${stepInvoiceDone ? "is-done" : nextAction.step === 2 ? "is-current" : ""}`}>2. 請求</span>
-              <span className={`fm-step-chip ${stepInvoiceSettled ? "is-done" : ""}`}>2b. 入金</span>
-              <span className={`fm-step-chip ${stepPaymentDone ? "is-done" : nextAction.step === 3 ? "is-current" : ""}`}>3. 支払</span>
-              <span className={`fm-step-chip ${nextAction.step > 4 ? "is-done" : nextAction.step === 4 ? "is-current" : ""}`}>4. 書類</span>
+      {/* KPI Row */}
+      <div className="kpi-row">
+        <div className="kpi-card">
+          <span className="kpi-label">見積金額</span>
+          <span className="kpi-value">{yen(estimateTotal)}</span>
+          <span className="kpi-sub">{projectItems.length}明細</span>
+        </div>
+        <div className="kpi-card">
+          <span className="kpi-label">請求金額</span>
+          <span className="kpi-value">{yen(invoiceTotal)}</span>
+          <span className="kpi-sub">{invoices.length}件</span>
+        </div>
+        <div className="kpi-card">
+          <span className="kpi-label">入金済</span>
+          <span className="kpi-value">{yen(settledSales)}</span>
+          <span className="kpi-sub">未回収 {yen(invoiceRemaining)}</span>
+        </div>
+        <div className="kpi-card">
+          <span className="kpi-label">原価（発注額）</span>
+          <span className="kpi-value">{yen(paymentTotal)}</span>
+          <span className="kpi-sub">未払 {yen(paymentRemaining)}</span>
+        </div>
+        <div className={`kpi-card ${marginWarning ? "kpi-warn" : ""}`}>
+          <span className="kpi-label">粗利見込</span>
+          <span className="kpi-value">{yen(grossEstimate)}</span>
+          <span className="kpi-sub">利益率 {grossRate.toFixed(1)}%{marginWarning ? ` (目標 ${targetMarginRate.toFixed(0)}% 未達)` : ""}</span>
+        </div>
+      </div>
+
+      {/* Step Progress */}
+      <div className="step-progress">
+        <span className={`step-item ${stepEstimateDone ? "is-done" : nextAction.step === 1 ? "is-current" : ""}`}>1. 見積</span>
+        <span className="step-connector" />
+        <span className={`step-item ${stepInvoiceDone ? "is-done" : nextAction.step === 2 ? "is-current" : ""}`}>2. 請求</span>
+        <span className="step-connector" />
+        <span className={`step-item ${stepInvoiceSettled ? "is-done" : ""}`}>2b. 入金</span>
+        <span className="step-connector" />
+        <span className={`step-item ${stepPaymentDone ? "is-done" : nextAction.step === 3 ? "is-current" : ""}`}>3. 支払</span>
+        <span className="step-connector" />
+        <span className={`step-item ${nextAction.step > 4 ? "is-done" : nextAction.step === 4 ? "is-current" : ""}`}>4. 書類</span>
+      </div>
+
+      {/* Next Action Banner */}
+      <div className="next-banner">
+        <div className="next-banner-text">
+          <span className="next-banner-label">Next Action</span>
+          <span className="next-banner-title">STEP {nextAction.step}: {nextAction.title}</span>
+          <span className="next-banner-desc">{nextAction.detail}</span>
+        </div>
+        <button className="btn btn-primary" onClick={() => setActiveTab(nextAction.tab)}>
+          {nextAction.title}
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="tab-row">
+        <button className={`tab-btn ${activeTab === "estimate" ? "is-active" : ""}`} onClick={() => setActiveTab("estimate")}>
+          見積 <span className="tab-badge">{projectItems.length}</span>
+        </button>
+        <button className={`tab-btn ${activeTab === "invoice" ? "is-active" : ""}`} onClick={() => setActiveTab("invoice")}>
+          請求・入金 <span className="tab-badge">{invoices.length}</span>
+        </button>
+        <button className={`tab-btn ${activeTab === "payment" ? "is-active" : ""}`} onClick={() => setActiveTab("payment")}>
+          支払 <span className="tab-badge">{payments.length}</span>
+        </button>
+        <button className={`tab-btn ${activeTab === "docs" ? "is-active" : ""}`} onClick={() => setActiveTab("docs")}>
+          書類・連絡
+        </button>
+      </div>
+
+      {/* === TAB: Estimate === */}
+      {activeTab === "estimate" ? (
+        <div className="animate-in" style={{ display: "grid", gap: "var(--sp-5)" }}>
+          <div className="card">
+            <h3 className="card-title"><span className="step-num">1</span> 見積明細を追加</h3>
+            <p className="card-desc">工事項目と数量を入力して「明細追加」を押してください。</p>
+            <div className="form-row-3" style={{ alignItems: "end" }}>
+              <label>
+                <span className="label-text">工事項目</span>
+                <select value={masterItemId} onChange={(e) => setMasterItemId(e.target.value)} disabled={working}>
+                  {masterOptions.map((w) => (
+                    <option key={w.id} value={String(w.id)}>{w.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span className="label-text">数量</span>
+                <input value={itemQuantity} onChange={(e) => setItemQuantity(e.target.value)} />
+              </label>
+              <button className="btn btn-primary" onClick={onAddProjectItem} disabled={working || masterOptions.length === 0} style={{ height: 36 }}>
+                明細追加
+              </button>
             </div>
           </div>
-          <div className="fm-quick-actions">
-            <a href={nextAction.anchor} className="fm-btn">
-              {nextAction.title}
-            </a>
-          </div>
-        </section>
 
-        {/* 3-Column Cockpit */}
-        <div className="fm-cockpit">
-          {/* Left Column: Estimate */}
-          <section className="fm-column">
-            <article id="step-estimate" className="fm-card">
-              <h2>STEP 1: 見積を作る</h2>
-              <p className="fm-step-note">工事項目と数量を入力して「明細追加」を押します。</p>
-              <div className="fm-inline-grid">
+          <div className="card">
+            <h3 className="card-title">見積明細一覧</h3>
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>大項目</th>
+                    <th>仕様</th>
+                    <th className="text-right">数量</th>
+                    <th className="text-right">単価</th>
+                    <th className="text-right">金額</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {projectItems.length === 0 ? (
+                    <tr className="empty-row"><td colSpan={5}>明細はまだありません</td></tr>
+                  ) : null}
+                  {projectItems.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.category}</td>
+                      <td>{item.item_name}</td>
+                      <td className="text-right">{item.quantity}{item.unit ?? ""}</td>
+                      <td className="text-right">{yen(item.unit_price)}</td>
+                      <td className="text-right"><strong>{yen(item.line_total)}</strong></td>
+                    </tr>
+                  ))}
+                  {projectItems.length > 0 ? (
+                    <tr className="table-total-row">
+                      <td colSpan={4} className="text-right"><strong>見積合計</strong></td>
+                      <td className="text-right"><strong>{yen(estimateTotal)}</strong></td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Project Info */}
+          <div className="card">
+            <h3 className="card-title">案件情報</h3>
+            <div className="form-row-3">
+              <label>
+                <span className="label-text">顧客名</span>
+                <input value={project?.customer_name ?? ""} disabled />
+              </label>
+              <label>
+                <span className="label-text">物件名</span>
+                <input value={project?.project_name ?? ""} disabled />
+              </label>
+              <label>
+                <span className="label-text">施工住所</span>
+                <input value={project?.site_address ?? ""} disabled />
+              </label>
+            </div>
+            <div className="form-row-3 mt-3">
+              <label>
+                <span className="label-text">管理担当</span>
+                <input value={project?.owner_name ?? ""} disabled />
+              </label>
+              <label>
+                <span className="label-text">目標粗利率</span>
+                <input value={`${targetMarginRate.toFixed(1)}%`} disabled />
+              </label>
+              <label>
+                <span className="label-text">作成日</span>
+                <input value={project?.created_at ?? ""} disabled />
+              </label>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* === TAB: Invoice === */}
+      {activeTab === "invoice" ? (
+        <div className="animate-in" style={{ display: "grid", gap: "var(--sp-5)" }}>
+          {/* Mini KPIs */}
+          <div className="mini-kpi-row">
+            <div className="mini-kpi">
+              <span className="mini-label">請求件数</span>
+              <span className="mini-value">{invoices.length} 件</span>
+            </div>
+            <div className="mini-kpi">
+              <span className="mini-label">未回収残</span>
+              <span className={`mini-value ${invoiceRemaining > 0 ? "text-warn" : ""}`}>{yen(invoiceRemaining)}</span>
+            </div>
+            <div className="mini-kpi">
+              <span className="mini-label">入金済</span>
+              <span className="mini-value text-ok">{yen(settledSales)}</span>
+            </div>
+          </div>
+
+          <div className="subcard-row">
+            {/* New Invoice */}
+            <div className="subcard">
+              <h4 className="subcard-title">新規請求</h4>
+              <div className="form-grid">
+                <div className="form-row-2">
+                  <label>
+                    <span className="label-text">請求種別</span>
+                    <input value={invoiceType} onChange={(e) => setInvoiceType(e.target.value)} />
+                  </label>
+                  <label>
+                    <span className="label-text">請求額</span>
+                    <input value={invoiceAmount} onChange={(e) => setInvoiceAmount(e.target.value)} />
+                  </label>
+                </div>
+                <div className="form-row-2">
+                  <label>
+                    <span className="label-text">請求日</span>
+                    <input type="date" value={invoiceBilledAt} onChange={(e) => setInvoiceBilledAt(e.target.value)} />
+                  </label>
+                  <label>
+                    <span className="label-text">初回入金額</span>
+                    <input value={invoicePaidAmount} onChange={(e) => setInvoicePaidAmount(e.target.value)} />
+                  </label>
+                </div>
+                <button className="btn btn-primary" onClick={onAddInvoice} disabled={working}>
+                  請求を登録
+                </button>
+              </div>
+            </div>
+
+            {/* Settle Invoice */}
+            <div className="subcard">
+              <h4 className="subcard-title">入金反映</h4>
+              <div className="form-grid">
                 <label>
-                  工事項目
-                  <select value={masterItemId} onChange={(e) => setMasterItemId(e.target.value)} disabled={working}>
-                    {masterOptions.map((w) => (
-                      <option key={w.id} value={String(w.id)}>
-                        {w.label}
+                  <span className="label-text">対象請求ID</span>
+                  <select
+                    value={invoiceToUpdate}
+                    onChange={(e) => {
+                      setInvoiceToUpdate(e.target.value);
+                      const matched = invoices.find((x) => x.invoice_id === e.target.value);
+                      if (matched) setInvoicePaidToUpdate(String(matched.paid_amount));
+                    }}
+                    disabled={working || invoices.length === 0}
+                  >
+                    {invoices.length === 0 ? <option value="">請求データなし</option> : null}
+                    {invoices.map((inv) => (
+                      <option key={inv.invoice_id} value={inv.invoice_id}>
+                        {inv.invoice_id} / 残{yen(inv.remaining_amount)}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label>
-                  数量
-                  <input value={itemQuantity} onChange={(e) => setItemQuantity(e.target.value)} />
+                  <span className="label-text">更新後入金額</span>
+                  <input value={invoicePaidToUpdate} onChange={(e) => setInvoicePaidToUpdate(e.target.value)} />
                 </label>
-                <button className="fm-btn fm-btn-primary" onClick={onAddProjectItem} disabled={working || masterOptions.length === 0}>
-                  明細追加
+                <button className="btn btn-primary" onClick={onSettleInvoice} disabled={working || !invoiceToUpdate}>
+                  入金を反映
+                </button>
+                {activeInvoice ? (
+                  <p className="form-help">選択中: {activeInvoice.invoice_id} / {activeInvoice.status ?? "-"}</p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          {/* Invoice Table */}
+          <div className="card">
+            <h3 className="card-title">請求一覧</h3>
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>請求ID</th>
+                    <th>種別</th>
+                    <th className="text-right">請求額</th>
+                    <th className="text-right">残額</th>
+                    <th>状態</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.length === 0 ? (
+                    <tr className="empty-row"><td colSpan={5}>請求データはまだありません</td></tr>
+                  ) : null}
+                  {invoices.map((inv) => (
+                    <tr key={inv.invoice_id}>
+                      <td><span className="id-mono">{inv.invoice_id}</span></td>
+                      <td>{inv.invoice_type ?? "-"}</td>
+                      <td className="text-right">{yen(inv.invoice_amount)}</td>
+                      <td className="text-right">{yen(inv.remaining_amount)}</td>
+                      <td>
+                        <span className={`badge ${inv.remaining_amount > 0 ? "badge-warning" : "badge-success"}`}>
+                          {inv.status ?? "-"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* === TAB: Payment === */}
+      {activeTab === "payment" ? (
+        <div className="animate-in" style={{ display: "grid", gap: "var(--sp-5)" }}>
+          <div className="mini-kpi-row">
+            <div className="mini-kpi">
+              <span className="mini-label">発注件数</span>
+              <span className="mini-value">{payments.length} 件</span>
+            </div>
+            <div className="mini-kpi">
+              <span className="mini-label">発注合計</span>
+              <span className="mini-value">{yen(paymentTotal)}</span>
+            </div>
+            <div className="mini-kpi">
+              <span className="mini-label">未払残</span>
+              <span className={`mini-value ${paymentRemaining > 0 ? "text-warn" : ""}`}>{yen(paymentRemaining)}</span>
+            </div>
+          </div>
+
+          <div className="subcard-row">
+            {/* New Payment */}
+            <div className="subcard">
+              <h4 className="subcard-title">新規支払</h4>
+              <div className="form-grid">
+                <label>
+                  <span className="label-text">業者名</span>
+                  <input value={paymentVendorName} onChange={(e) => setPaymentVendorName(e.target.value)} />
+                </label>
+                <div className="form-row-2">
+                  <label>
+                    <span className="label-text">発注額</span>
+                    <input value={paymentOrderedAmount} onChange={(e) => setPaymentOrderedAmount(e.target.value)} />
+                  </label>
+                  <label>
+                    <span className="label-text">支払額</span>
+                    <input value={paymentPaidAmount} onChange={(e) => setPaymentPaidAmount(e.target.value)} />
+                  </label>
+                </div>
+                <button className="btn btn-primary" onClick={onAddPayment} disabled={working}>
+                  支払を登録
                 </button>
               </div>
+            </div>
 
-              <div className="table-wrap">
-                <table className="table fm-table-dense">
-                  <thead>
-                    <tr>
-                      <th>大項目</th>
-                      <th>仕様</th>
-                      <th>数量</th>
-                      <th>単価</th>
-                      <th>金額</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {projectItems.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="empty-state">明細はまだありません。上から項目を追加してください。</td>
-                      </tr>
-                    ) : null}
-                    {projectItems.map((item) => (
-                      <tr key={item.id}>
-                        <td>{item.category}</td>
-                        <td>{item.item_name}</td>
-                        <td className="text-right">{item.quantity}{item.unit ?? ""}</td>
-                        <td className="text-right">{yen(item.unit_price)}</td>
-                        <td className="text-right"><strong>{yen(item.line_total)}</strong></td>
-                      </tr>
+            {/* Settle Payment */}
+            <div className="subcard">
+              <h4 className="subcard-title">支払消込</h4>
+              <div className="form-grid">
+                <label>
+                  <span className="label-text">対象支払ID</span>
+                  <select
+                    value={paymentToUpdate}
+                    onChange={(e) => {
+                      setPaymentToUpdate(e.target.value);
+                      const matched = payments.find((x) => x.payment_id === e.target.value);
+                      if (matched) setPaymentPaidToUpdate(String(matched.paid_amount));
+                    }}
+                    disabled={working || payments.length === 0}
+                  >
+                    {payments.length === 0 ? <option value="">支払データなし</option> : null}
+                    {payments.map((pay) => (
+                      <option key={pay.payment_id} value={pay.payment_id}>
+                        {pay.payment_id} / 残{yen(pay.remaining_amount)}
+                      </option>
                     ))}
-                    {projectItems.length > 0 ? (
-                      <tr className="table-total-row">
-                        <td colSpan={4} className="text-right"><strong>見積合計</strong></td>
-                        <td className="text-right"><strong>{yen(estimateTotal)}</strong></td>
-                      </tr>
-                    ) : null}
-                  </tbody>
-                </table>
+                  </select>
+                </label>
+                <label>
+                  <span className="label-text">更新後支払額</span>
+                  <input value={paymentPaidToUpdate} onChange={(e) => setPaymentPaidToUpdate(e.target.value)} />
+                </label>
+                <button className="btn btn-primary" onClick={onSettlePayment} disabled={working || !paymentToUpdate}>
+                  消込を反映
+                </button>
+                {activePayment ? (
+                  <p className="form-help">選択中: {activePayment.payment_id} / {activePayment.status ?? "-"}</p>
+                ) : null}
               </div>
-            </article>
+            </div>
+          </div>
 
-            <article className="fm-card fm-card-muted">
-              <h2>案件情報</h2>
-              <div className="fm-form-grid">
-                <label>
-                  顧客名
-                  <input value={project?.customer_name ?? ""} disabled />
-                </label>
-                <label>
-                  物件名
-                  <input value={project?.project_name ?? ""} disabled />
-                </label>
-                <label>
-                  施工住所
-                  <input value={project?.site_address ?? ""} disabled />
-                </label>
-                <label>
-                  管理担当
-                  <input value={project?.owner_name ?? ""} disabled />
-                </label>
-                <label>
-                  目標粗利率
-                  <input value={`${targetMarginRate.toFixed(1)}%`} disabled />
-                </label>
-                <label>
-                  作成日
-                  <input value={project?.created_at ?? ""} disabled />
-                </label>
-              </div>
-            </article>
-          </section>
-
-          {/* Center Column: Invoice / Settlement */}
-          <section className="fm-column">
-            <article id="step-invoice" className="fm-card">
-              <h2>STEP 2: 請求・入金</h2>
-              <div className="fm-split">
-                <div className="fm-subcard">
-                  <p className="fm-subcard-title">新規請求</p>
-                  <label>
-                    請求種別
-                    <input value={invoiceType} onChange={(e) => setInvoiceType(e.target.value)} />
-                  </label>
-                  <label>
-                    請求額
-                    <input value={invoiceAmount} onChange={(e) => setInvoiceAmount(e.target.value)} />
-                  </label>
-                  <label>
-                    請求日
-                    <input type="date" value={invoiceBilledAt} onChange={(e) => setInvoiceBilledAt(e.target.value)} />
-                  </label>
-                  <label>
-                    初回入金額
-                    <input value={invoicePaidAmount} onChange={(e) => setInvoicePaidAmount(e.target.value)} />
-                  </label>
-                  <button className="fm-btn fm-btn-primary" onClick={onAddInvoice} disabled={working}>
-                    請求を登録
-                  </button>
-                </div>
-                <div className="fm-subcard">
-                  <p className="fm-subcard-title">入金反映</p>
-                  <label>
-                    対象請求ID
-                    <select
-                      value={invoiceToUpdate}
-                      onChange={(e) => {
-                        setInvoiceToUpdate(e.target.value);
-                        const matched = invoices.find((x) => x.invoice_id === e.target.value);
-                        if (matched) setInvoicePaidToUpdate(String(matched.paid_amount));
-                      }}
-                      disabled={working || invoices.length === 0}
-                    >
-                      {invoices.length === 0 ? <option value="">請求データなし</option> : null}
-                      {invoices.map((inv) => (
-                        <option key={inv.invoice_id} value={inv.invoice_id}>
-                          {inv.invoice_id} / 残{yen(inv.remaining_amount)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    更新後入金額
-                    <input value={invoicePaidToUpdate} onChange={(e) => setInvoicePaidToUpdate(e.target.value)} />
-                  </label>
-                  <button className="fm-btn fm-btn-primary" onClick={onSettleInvoice} disabled={working || !invoiceToUpdate}>
-                    入金を反映
-                  </button>
-                  {activeInvoice ? (
-                    <p className="fm-row-note">
-                      選択中: {activeInvoice.invoice_id} / {activeInvoice.status ?? "-"}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-            </article>
-
-            <article className="fm-card">
-              <h2>請求・入金サマリー</h2>
-              <div className="fm-mini-metrics">
-                <article className="fm-mini-card">
-                  <span>請求件数</span>
-                  <strong>{invoices.length} 件</strong>
-                </article>
-                <article className="fm-mini-card">
-                  <span>未回収残</span>
-                  <strong className={invoiceRemaining > 0 ? "text-warn" : ""}>{yen(invoiceRemaining)}</strong>
-                </article>
-                <article className="fm-mini-card">
-                  <span>入金済</span>
-                  <strong className="text-ok">{yen(settledSales)}</strong>
-                </article>
-              </div>
-
+          {/* Payment Table */}
+          {payments.length > 0 ? (
+            <div className="card">
+              <h3 className="card-title">支払一覧</h3>
               <div className="table-wrap">
-                <table className="table fm-table-dense">
+                <table className="table">
                   <thead>
                     <tr>
-                      <th>請求ID</th>
-                      <th>種別</th>
-                      <th>請求額</th>
-                      <th>残額</th>
+                      <th>支払ID</th>
+                      <th>業者</th>
+                      <th className="text-right">発注額</th>
+                      <th className="text-right">残額</th>
                       <th>状態</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {invoices.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="empty-state">請求データはまだありません。</td>
-                      </tr>
-                    ) : null}
-                    {invoices.map((inv) => (
-                      <tr key={inv.invoice_id} className={inv.remaining_amount > 0 ? "row-alert" : ""}>
-                        <td><span className="id-mono">{inv.invoice_id}</span></td>
-                        <td>{inv.invoice_type ?? "-"}</td>
-                        <td className="text-right">{yen(inv.invoice_amount)}</td>
-                        <td className="text-right">{yen(inv.remaining_amount)}</td>
-                        <td>{inv.status ?? "-"}</td>
+                    {payments.map((pay) => (
+                      <tr key={pay.payment_id}>
+                        <td><span className="id-mono">{pay.payment_id}</span></td>
+                        <td>{pay.vendor_name ?? "-"}</td>
+                        <td className="text-right">{yen(pay.ordered_amount)}</td>
+                        <td className="text-right">{yen(pay.remaining_amount)}</td>
+                        <td>
+                          <span className={`badge ${pay.remaining_amount > 0 ? "badge-warning" : "badge-success"}`}>
+                            {pay.status ?? "-"}
+                          </span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-            </article>
-          </section>
-
-          {/* Right Column: Payment / Docs / Log */}
-          <aside className="fm-column">
-            <article id="step-payment" className="fm-card">
-              <h2>STEP 3: 支払・消込</h2>
-              <div className="fm-split">
-                <div className="fm-subcard">
-                  <p className="fm-subcard-title">新規支払</p>
-                  <label>
-                    業者名
-                    <input value={paymentVendorName} onChange={(e) => setPaymentVendorName(e.target.value)} />
-                  </label>
-                  <label>
-                    発注額
-                    <input value={paymentOrderedAmount} onChange={(e) => setPaymentOrderedAmount(e.target.value)} />
-                  </label>
-                  <label>
-                    支払額
-                    <input value={paymentPaidAmount} onChange={(e) => setPaymentPaidAmount(e.target.value)} />
-                  </label>
-                  <button className="fm-btn fm-btn-primary" onClick={onAddPayment} disabled={working}>
-                    支払を登録
-                  </button>
-                </div>
-                <div className="fm-subcard">
-                  <p className="fm-subcard-title">支払消込</p>
-                  <label>
-                    対象支払ID
-                    <select
-                      value={paymentToUpdate}
-                      onChange={(e) => {
-                        setPaymentToUpdate(e.target.value);
-                        const matched = payments.find((x) => x.payment_id === e.target.value);
-                        if (matched) setPaymentPaidToUpdate(String(matched.paid_amount));
-                      }}
-                      disabled={working || payments.length === 0}
-                    >
-                      {payments.length === 0 ? <option value="">支払データなし</option> : null}
-                      {payments.map((pay) => (
-                        <option key={pay.payment_id} value={pay.payment_id}>
-                          {pay.payment_id} / 残{yen(pay.remaining_amount)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    更新後支払額
-                    <input value={paymentPaidToUpdate} onChange={(e) => setPaymentPaidToUpdate(e.target.value)} />
-                  </label>
-                  <button className="fm-btn fm-btn-primary" onClick={onSettlePayment} disabled={working || !paymentToUpdate}>
-                    消込を反映
-                  </button>
-                  {activePayment ? (
-                    <p className="fm-row-note">
-                      選択中: {activePayment.payment_id} / {activePayment.status ?? "-"}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-              {payments.length > 0 ? (
-                <div className="table-wrap">
-                  <table className="table fm-table-dense">
-                    <thead>
-                      <tr>
-                        <th>支払ID</th>
-                        <th>業者</th>
-                        <th>発注額</th>
-                        <th>残額</th>
-                        <th>状態</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {payments.map((pay) => (
-                        <tr key={pay.payment_id} className={pay.remaining_amount > 0 ? "row-alert" : ""}>
-                          <td><span className="id-mono">{pay.payment_id}</span></td>
-                          <td>{pay.vendor_name ?? "-"}</td>
-                          <td className="text-right">{yen(pay.ordered_amount)}</td>
-                          <td className="text-right">{yen(pay.remaining_amount)}</td>
-                          <td>{pay.status ?? "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : null}
-            </article>
-
-            <article id="step-docs" className="fm-card">
-              <h2>STEP 4: 書類発行・連絡</h2>
-              <p className="fm-step-note">帳票を出力するとプレビューに表示されます。</p>
-              <div className="fm-doc-actions">
-                <button className="fm-btn fm-btn-primary" onClick={onExportEstimate} disabled={working}>
-                  見積書PDF
-                </button>
-                <button className="fm-btn" onClick={onExportReceipt} disabled={working || !invoiceIdForPdf}>
-                  領収書PDF
-                </button>
-                <button className="fm-btn fm-btn-ghost" onClick={onDraftInvoiceMail} disabled={working || invoices.length === 0}>
-                  請求メール
-                </button>
-              </div>
-              <label>
-                領収書対象請求ID
-                <select value={invoiceIdForPdf} onChange={(e) => setInvoiceIdForPdf(e.target.value)} disabled={working}>
-                  {invoices.length === 0 ? <option value="">請求データなし</option> : null}
-                  {invoices.map((inv) => (
-                    <option key={inv.invoice_id} value={inv.invoice_id}>
-                      {inv.invoice_id} / 入金 {yen(inv.paid_amount)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="fm-preview-meta">
-                <strong>帳票プレビュー（A4横）</strong>
-                <span>{previewTitle || "未出力"}</span>
-              </div>
-              <div className="fm-preview-shell">
-                {previewLoading ? (
-                  <p className="fm-row-note">帳票を生成中...</p>
-                ) : previewUrl ? (
-                  <iframe title={previewTitle || "帳票プレビュー"} src={previewUrl} />
-                ) : (
-                  <p className="fm-row-note">見積書PDFまたは領収書PDFを出力すると、ここにプレビューが表示されます。</p>
-                )}
-              </div>
-            </article>
-
-            <article className="fm-card">
-              <h2>変更履歴（監査ログ）</h2>
-              {auditLogs.length === 0 ? (
-                <p className="fm-row-note">操作を実行すると履歴が保存されます。</p>
-              ) : null}
-              <ul className="fm-audit-list">
-                {auditLogs.map((row) => (
-                  <li key={row.id}>
-                    <div className="fm-audit-head">
-                      <span className={`fm-audit-cat ${CATEGORY_COLORS[row.category] ?? ""}`}>{row.category}</span>
-                      <strong>{row.action}</strong>
-                      <time>{new Date(row.created_at).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</time>
-                    </div>
-                    <p className="fm-row-note">{row.detail}</p>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          </aside>
+            </div>
+          ) : null}
         </div>
-      </section>
+      ) : null}
 
-      {message ? (
-        <p className={`message ${messageType === "error" ? "message-error" : ""} ${messageType === "success" ? "message-success" : ""}`}>
-          {message}
-        </p>
+      {/* === TAB: Docs === */}
+      {activeTab === "docs" ? (
+        <div className="animate-in" style={{ display: "grid", gap: "var(--sp-5)" }}>
+          <div className="card">
+            <h3 className="card-title"><span className="step-num">4</span> 書類発行・連絡</h3>
+            <p className="card-desc">帳票PDFを出力するとプレビューに表示されます。</p>
+
+            <div className="doc-actions mb-4">
+              <button className="btn btn-primary" onClick={onExportEstimate} disabled={working}>
+                見積書PDF
+              </button>
+              <button className="btn" onClick={onExportReceipt} disabled={working || !invoiceIdForPdf}>
+                領収書PDF
+              </button>
+              <button className="btn btn-ghost" onClick={onDraftInvoiceMail} disabled={working || invoices.length === 0}>
+                請求メール文面
+              </button>
+            </div>
+
+            <label>
+              <span className="label-text">領収書対象請求ID</span>
+              <select value={invoiceIdForPdf} onChange={(e) => setInvoiceIdForPdf(e.target.value)} disabled={working}>
+                {invoices.length === 0 ? <option value="">請求データなし</option> : null}
+                {invoices.map((inv) => (
+                  <option key={inv.invoice_id} value={inv.invoice_id}>
+                    {inv.invoice_id} / 入金 {yen(inv.paid_amount)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="preview-meta mt-4">
+              <strong>{previewTitle || "帳票プレビュー"}</strong>
+              <span>{previewTitle ? "A4横" : "未出力"}</span>
+            </div>
+            <div className="preview-shell">
+              {previewLoading ? (
+                <p className="text-muted">帳票を生成中...</p>
+              ) : previewUrl ? (
+                <iframe title={previewTitle || "帳票プレビュー"} src={previewUrl} />
+              ) : (
+                <p className="text-muted">PDFを出力するとここにプレビューが表示されます</p>
+              )}
+            </div>
+          </div>
+
+          {/* Audit Log */}
+          <div className="card">
+            <button className="audit-toggle" onClick={() => setShowAuditLog(!showAuditLog)}>
+              {showAuditLog ? "▼" : "▶"} 変更履歴（監査ログ） <span className="count-badge">{auditLogs.length}件</span>
+            </button>
+            {showAuditLog ? (
+              auditLogs.length === 0 ? (
+                <p className="form-help mt-2">操作を実行すると履歴が保存されます。</p>
+              ) : (
+                <ul className="audit-list mt-2">
+                  {auditLogs.map((row) => (
+                    <li key={row.id} className="audit-item">
+                      <div className="audit-head">
+                        <span className={`audit-cat ${CATEGORY_COLORS[row.category] ?? ""}`}>{row.category}</span>
+                        <span className="audit-action">{row.action}</span>
+                        <span className="audit-time">
+                          {new Date(row.created_at).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                      <span className="audit-detail">{row.detail}</span>
+                    </li>
+                  ))}
+                </ul>
+              )
+            ) : null}
+          </div>
+        </div>
       ) : null}
     </main>
   );

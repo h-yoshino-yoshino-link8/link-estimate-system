@@ -134,128 +134,149 @@ export default function ProjectsPage() {
 
   return (
     <main className="page">
-      <section className="hero">
-        <p className="eyebrow">Project Hub</p>
-        <h1>案件管理</h1>
-        <p className="sub">案件を作成したら、その案件ページ内で見積・請求・支払・帳票を一気通貫で処理します。</p>
-        {localMode ? <p className="warning">現在はローカルモードです。操作データはこのブラウザ内に保存されます。</p> : null}
-      </section>
+      {/* Header */}
+      <div className="page-header">
+        <div>
+          <h1>案件管理</h1>
+          <p className="page-header-sub">案件を作成し、見積・請求・支払・帳票を一気通貫で管理します</p>
+        </div>
+      </div>
 
-      <section className="workspace-grid">
-        <article className="panel">
-          <h2>新規案件作成</h2>
-          <p className="form-help">
-            <span className="required-mark">*</span> は必須項目です
-          </p>
-          <label>
-            <span className="label-text">
-              顧客 <span className="required-mark">*</span>
-            </span>
-            <select value={customerId} onChange={(e) => { setCustomerId(e.target.value); setFieldErrors((prev) => ({ ...prev, customerId: "" })); }} disabled={working || loading}>
-              {customers.map((c) => (
-                <option key={c.customer_id} value={c.customer_id}>
-                  {c.customer_id} / {c.customer_name}
-                </option>
-              ))}
-            </select>
-            {fieldErrors.customerId ? <span className="field-error">{fieldErrors.customerId}</span> : null}
-          </label>
-          <label>
-            <span className="label-text">
-              物件名 <span className="required-mark">*</span>
-            </span>
-            <input
-              value={projectName}
-              onChange={(e) => { setProjectName(e.target.value); setFieldErrors((prev) => ({ ...prev, projectName: "" })); }}
-              placeholder="例: 吉野邸キッチンリフォーム"
-              className={fieldErrors.projectName ? "input-error" : ""}
-            />
-            {fieldErrors.projectName ? <span className="field-error">{fieldErrors.projectName}</span> : null}
-          </label>
-          <label>
-            <span className="label-text">施工住所</span>
-            <input value={siteAddress} onChange={(e) => setSiteAddress(e.target.value)} placeholder="例: 東京都港区..." />
-          </label>
-          <label>
-            <span className="label-text">担当者</span>
-            <input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
-          </label>
-          <label>
-            <span className="label-text">
-              目標粗利率 <span className="required-mark">*</span>
-            </span>
-            <input
-              value={marginRate}
-              onChange={(e) => { setMarginRate(e.target.value); setFieldErrors((prev) => ({ ...prev, marginRate: "" })); }}
-              placeholder="0.25"
-              className={fieldErrors.marginRate ? "input-error" : ""}
-            />
-            {fieldErrors.marginRate ? <span className="field-error">{fieldErrors.marginRate}</span> : null}
-          </label>
-          {formError ? <p className="form-error">{formError}</p> : null}
-          <p className="fm-row-note">入力後に保存ボタンを押すと、案件が作成されて案件ワークスペースへ移動します。</p>
-          <button className="btn-primary" onClick={onCreateProject} disabled={working || loading}>
-            {working ? "保存中..." : "保存して案件を作成"}
-          </button>
-        </article>
+      {localMode ? <div className="warning-bar">ローカルモード: 操作データはこのブラウザ内に保存されます（サーバー未接続）</div> : null}
 
-        <article className="panel panel-span-2">
-          <div className="panel-header-inline">
-            <h2>案件一覧 <span className="count-badge">{filteredProjects.length}件</span></h2>
-            <label className="inline-control">
+      {message ? (
+        <div className={`message ${messageType === "error" ? "message-error" : ""} ${messageType === "success" ? "message-success" : ""}`}>
+          {message}
+        </div>
+      ) : null}
+
+      {/* Main Layout: form sidebar + project list */}
+      <div className="projects-layout">
+        {/* Left: Create Form */}
+        <div className="card project-form-card">
+          <h2 className="card-title">新規案件作成</h2>
+          <p className="form-help"><span className="required-mark">*</span> は必須項目</p>
+
+          <div className="form-grid">
+            <label>
+              <span className="label-text">顧客 <span className="required-mark">*</span></span>
+              <select
+                value={customerId}
+                onChange={(e) => { setCustomerId(e.target.value); setFieldErrors((prev) => ({ ...prev, customerId: "" })); }}
+                disabled={working || loading}
+              >
+                {customers.map((c) => (
+                  <option key={c.customer_id} value={c.customer_id}>
+                    {c.customer_id} / {c.customer_name}
+                  </option>
+                ))}
+              </select>
+              {fieldErrors.customerId ? <span className="field-error">{fieldErrors.customerId}</span> : null}
+            </label>
+
+            <label>
+              <span className="label-text">物件名 <span className="required-mark">*</span></span>
+              <input
+                value={projectName}
+                onChange={(e) => { setProjectName(e.target.value); setFieldErrors((prev) => ({ ...prev, projectName: "" })); }}
+                placeholder="例: 吉野邸キッチンリフォーム"
+                className={fieldErrors.projectName ? "input-error" : ""}
+              />
+              {fieldErrors.projectName ? <span className="field-error">{fieldErrors.projectName}</span> : null}
+            </label>
+
+            <label>
+              <span className="label-text">施工住所</span>
+              <input value={siteAddress} onChange={(e) => setSiteAddress(e.target.value)} placeholder="例: 東京都港区..." />
+            </label>
+
+            <div className="form-row-2">
+              <label>
+                <span className="label-text">担当者</span>
+                <input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
+              </label>
+              <label>
+                <span className="label-text">目標粗利率 <span className="required-mark">*</span></span>
+                <input
+                  value={marginRate}
+                  onChange={(e) => { setMarginRate(e.target.value); setFieldErrors((prev) => ({ ...prev, marginRate: "" })); }}
+                  placeholder="0.25"
+                  className={fieldErrors.marginRate ? "input-error" : ""}
+                />
+                {fieldErrors.marginRate ? <span className="field-error">{fieldErrors.marginRate}</span> : null}
+              </label>
+            </div>
+
+            {formError ? <div className="form-error">{formError}</div> : null}
+
+            <button className="btn btn-primary" onClick={onCreateProject} disabled={working || loading} style={{ width: "100%", height: 40 }}>
+              {working ? "保存中..." : "保存して案件を作成"}
+            </button>
+          </div>
+        </div>
+
+        {/* Right: Project List */}
+        <div className="card">
+          <div className="flex-between mb-4">
+            <h2 className="card-title" style={{ margin: 0 }}>
+              案件一覧 <span className="count-badge">{filteredProjects.length}件</span>
+            </h2>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13 }}>
               ステータス
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: "auto" }}>
                 <option value="all">すべて</option>
                 {statuses.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
+                  <option key={status} value={status}>{status}</option>
                 ))}
               </select>
             </label>
           </div>
 
-          <div className="table-wrap">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>案件ID</th>
-                  <th>物件名</th>
-                  <th>顧客</th>
-                  <th>担当</th>
-                  <th>ステータス</th>
-                  <th>作成日</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProjects.map((project) => (
-                  <tr key={project.project_id} className="table-row-hover">
-                    <td><span className="id-mono">{project.project_id}</span></td>
-                    <td>
-                      <strong className="project-name-cell">{project.project_name}</strong>
-                      <br />
-                      <span className="cell-sub">{project.site_address ?? "住所未設定"}</span>
-                    </td>
-                    <td>{project.customer_name}</td>
-                    <td>{project.owner_name}</td>
-                    <td><span className="status-badge">{project.project_status}</span></td>
-                    <td className="cell-sub">{project.created_at}</td>
-                    <td>
-                      <Link href={`/projects/${project.project_id}`} className="btn-open-ws">
-                        開く
-                      </Link>
-                    </td>
+          {filteredProjects.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon">&#128194;</div>
+              <p className="empty-state-text">該当する案件はありません</p>
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>案件ID</th>
+                    <th>物件名</th>
+                    <th>顧客</th>
+                    <th>担当</th>
+                    <th>ステータス</th>
+                    <th>作成日</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {filteredProjects.length === 0 ? <p className="item-row">該当する案件はありません。</p> : null}
-        </article>
-      </section>
-
-      {message ? <p className={`message ${messageType === "error" ? "message-error" : ""} ${messageType === "success" ? "message-success" : ""}`}>{message}</p> : null}
+                </thead>
+                <tbody>
+                  {filteredProjects.map((project) => (
+                    <tr key={project.project_id}>
+                      <td><span className="id-mono">{project.project_id}</span></td>
+                      <td>
+                        <strong>{project.project_name}</strong>
+                        <br />
+                        <span className="text-muted" style={{ fontSize: 12 }}>{project.site_address ?? "住所未設定"}</span>
+                      </td>
+                      <td>{project.customer_name}</td>
+                      <td>{project.owner_name}</td>
+                      <td><span className="badge badge-default">{project.project_status}</span></td>
+                      <td className="text-muted" style={{ fontSize: 12 }}>{project.created_at}</td>
+                      <td>
+                        <Link href={`/projects/${project.project_id}`} className="btn btn-sm btn-primary" style={{ textDecoration: "none" }}>
+                          開く
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
     </main>
   );
 }
