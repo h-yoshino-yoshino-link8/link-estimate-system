@@ -1,8 +1,8 @@
 # Execution Log (2026-02-17)
 
-- Timestamp: 2026-02-17 21:21:16 JST
+- Timestamp: 2026-02-17 21:33:58 JST
 - Branch: codex/build-link-estimate-system
-- Head: 6902447
+- Head: 4724a20
 
 ## Python compile check
 - Command: python3 -m py_compile scripts/build_workbook.py scripts/validate_workbook.py
@@ -75,11 +75,11 @@ app/api/app/main.py:24
    Collecting build traces ...
 
 Route (app)                              Size     First Load JS
-┌ ○ /                                    4.36 kB        98.3 kB
+┌ ○ /                                    2.59 kB         101 kB
 ├ ○ /_not-found                          875 B            88 kB
-├ ○ /finance                             4.72 kB        98.6 kB
-├ ○ /projects                            3.5 kB         97.4 kB
-└ ƒ /projects/[projectId]                4.98 kB        98.9 kB
+├ ○ /finance                             3 kB            102 kB
+├ ○ /projects                            1.72 kB         100 kB
+└ ƒ /projects/[projectId]                3.27 kB         102 kB
 + First Load JS shared by all            87.1 kB
   ├ chunks/23-c61e312c20c04c5e.js        31.5 kB
   ├ chunks/fd9d1056-b6e16a5f15b47ad4.js  53.7 kB
@@ -92,11 +92,10 @@ Route (app)                              Size     First Load JS
 - Result: PASS
 
 ## Git status (short)
- M app/web/app/globals.css
+ M app/README.md
  M app/web/app/layout.tsx
- M app/web/app/page.tsx
  M app/web/lib/api.ts
-?? app/web/app/finance/
-?? app/web/app/projects/
-?? docs/PRODUCT_REDESIGN_BLUEPRINT_20260217.md
+ M app/web/next.config.mjs
+ M docs/PRODUCT_REDESIGN_BLUEPRINT_20260217.md
+?? app/api/.gitignore
 

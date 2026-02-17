@@ -22,7 +22,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <nav className="top-nav" aria-label="primary">
               <Link href="/">経営ダッシュボード</Link>
               <Link href="/projects">案件管理</Link>
-              <Link href="/finance">会計センター</Link>
             </nav>
           </div>
         </header>
