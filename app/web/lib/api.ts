@@ -261,6 +261,10 @@ async function withFallback<T>(
   fallback: () => T | Promise<T>,
   option?: FallbackOption,
 ) {
+  // If local mode is already active in browser, skip remote call for deterministic UX.
+  if (isBrowser() && isLocalModeEnabled()) {
+    return await fallback();
+  }
   if (FORCE_LOCAL_DATA) {
     markLocalMode("FORCE_LOCAL_DATA");
     return await fallback();
@@ -660,8 +664,9 @@ export async function createProject(payload: {
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`案件作成に失敗しました: ${body}`);
+        const body = (await res.text()).trim();
+        const detail = body || `${res.status} ${res.statusText}`.trim() || "unknown error";
+        throw new Error(`案件作成に失敗しました: ${detail}`);
       }
       return await res.json();
     },
