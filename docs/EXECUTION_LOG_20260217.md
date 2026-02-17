@@ -110,3 +110,16 @@ Route (app)                                 Size  First Load JS
 - Build result: PASS
 - Deploy URL: https://web-pw38wacj5-h-yoshino-link-8jps-projects.vercel.app
 - Access check: HTTP 200
+
+## PDF + KPI + create-flow fix bundle
+- Timestamp: 2026-02-18 06:18:54 JST
+- Branch: `main`
+- Commit: `2b60106`
+- Files:
+  - `app/web/lib/api.ts`
+  - `app/web/app/projects/[projectId]/page.tsx`
+  - `app/web/app/projects/page.tsx`
+- Build result: PASS
+- Deploy URL: https://web-1zf09po6p-h-yoshino-link-8jps-projects.vercel.app
+- Access check: HTTP 200
+- Note: local generated PDF sample verified as `PDF document, version 1.4, 1 pages`.

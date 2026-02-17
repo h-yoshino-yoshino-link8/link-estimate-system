@@ -41,3 +41,13 @@
 - Production URL: https://web-pw38wacj5-h-yoshino-link-8jps-projects.vercel.app
 - Access check: `HTTP 200`
 - Fix: In local mode, skip remote API calls and save directly to local data to avoid project creation failures.
+
+## Vercel Deploy (2026-02-18 06:18:54 JST)
+- Project: `h-yoshino-link-8jps-projects/web`
+- Commit: `2b60106`
+- Production URL: https://web-1zf09po6p-h-yoshino-link-8jps-projects.vercel.app
+- Access check: `HTTP 200`
+- Fixes:
+  - Local/invalid PDF fallback now emits valid `%PDF-1.4` bytes (A4 landscape).
+  - KPI top cards now reflect estimate/invoice/settlement/cost/gross values.
+  - Project creation button wording clarified to explicit "保存して案件を作成".
