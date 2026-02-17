@@ -170,3 +170,27 @@ Route (app)                                 Size  First Load JS
 - Purpose:
   - Added a copy-paste instruction pack for Claude Code execution.
   - Added a structured return template for Claude -> Codex handoff.
+
+## UI/UX rebuild (Claude Code execution)
+- Timestamp: 2026-02-18 08:36:00 JST
+- Branch: `main`
+- Commit: `fb4e8bc`
+- Files:
+  - `app/web/app/projects/page.tsx`
+  - `app/web/app/projects/[projectId]/page.tsx`
+  - `app/web/app/globals.css`
+- Build command: `npm --prefix app/web run build`
+- Build result: PASS (Compiled successfully in 1085ms, all 6 pages generated)
+- Deploy URL: https://web-eypakfkld-h-yoshino-link-8jps-projects.vercel.app
+- Access check: HTTP 200
+- Changes:
+  - /projects: required-field markers, inline validation, messageType (success/error), status badges, hover rows, open buttons
+  - /projects/[id]: KPI label clarity, margin warning, current-step pulse chip, primary CTA, subcard titles, payment table, category-colored audit log
+  - CSS: 20+ new utility classes for form errors, message variants, button hierarchy, KPI warnings, audit log categories
+- Existing functionality preserved:
+  - Project creation (local mode): OK
+  - Estimate item add: OK
+  - Invoice create/update: OK
+  - Payment create/update: OK
+  - PDF export (estimate/receipt): OK
+  - Mail draft: OK

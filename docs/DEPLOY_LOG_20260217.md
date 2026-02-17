@@ -75,3 +75,14 @@
 - Production URL: https://web-7l87e9evn-h-yoshino-link-8jps-projects.vercel.app
 - Access check: `HTTP 200`
 - Change: Added in-page A4 document preview and persistent per-project audit log for estimate/invoice/payment/document actions.
+
+## Vercel Deploy (2026-02-18 08:36:00 JST)
+- Project: `h-yoshino-link-8jps-projects/web`
+- Commit: `fb4e8bc`
+- Production URL: https://web-eypakfkld-h-yoshino-link-8jps-projects.vercel.app
+- Access check: `HTTP 200`
+- Changes (Claude Code UI/UX rebuild):
+  - Projects page: required-field markers (*), inline field validation errors, success/error message styling, project list readability (status badges, hover rows, open buttons, count badge)
+  - Cockpit: KPI labels clarified to 見積金額/請求金額/入金済/原価(発注額)/粗利見込, margin warning when below target rate, current-step highlight pulse on step chips, single primary CTA in next-action banner, subcard titles for invoice/payment split forms, payment summary table inline, category-colored audit log badges (見積=green, 請求=blue, 支払=orange, 帳票=purple)
+  - Documents: preview loading state indicator, improved PDF error messages with retry guidance
+  - CSS: field-error/input-error, message-error/message-success, fm-btn-primary, fm-kpi-warn, fm-step-chip.is-current pulse animation, fm-subcard-title, table-total-row, focus ring on inputs
