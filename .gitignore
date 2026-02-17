@@ -5,3 +5,10 @@ excel/~$*.xlsm
 # Python cache
 __pycache__/
 *.pyc
+
+# App artifacts
+app/web/node_modules/
+app/web/.next/
+app/web/out/
+app/api/data/*.db
+app/api/.pytest_cache/

@@ -62,6 +62,15 @@ python3 scripts/validate_workbook.py --workbook excel/見積原価管理シス�
 
 詳細は `docs/BUILD_RUNBOOK_20260217.md` を参照してください。
 
+## App (MVP) 開発
+
+アプリ実装は `app/` 配下です。
+
+- Backend: `app/api` (FastAPI)
+- Frontend: `app/web` (Next.js)
+
+詳細は `app/README.md` を参照してください。
+
 ## 進捗確認・ログ・プッシュ運用
 
 毎回の確認とログ生成は次で実行できます。

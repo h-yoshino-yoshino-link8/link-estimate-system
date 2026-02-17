@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  api:
+    build: ./api
+    container_name: link-estimate-api
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_CORS_ORIGINS=http://localhost:3000
+    volumes:
+      - ./api/data:/srv/api/data
+
+  web:
+    build: ./web
+    container_name: link-estimate-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE=http://localhost:8000
+    depends_on:
+      - api

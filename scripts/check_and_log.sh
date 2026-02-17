@@ -43,6 +43,14 @@ run_step "Python compile check" python3 -m py_compile scripts/build_workbook.py 
 run_step "Build workbook smoke test" python3 scripts/build_workbook.py --output "$BUILD_TEST_OUT"
 run_step "Validate workbook (require-vba)" python3 scripts/validate_workbook.py --workbook "$WORKBOOK_PATH" --require-vba
 
+if [[ -d "app/api" ]]; then
+  run_step "API tests" env PYTHONPATH=app/api python3 -m pytest -q app/api/tests
+fi
+
+if [[ -d "app/web" && -d "app/web/node_modules" ]]; then
+  run_step "Web build" npm --prefix app/web run build
+fi
+
 {
   echo "## Git status (short)"
   git status --short

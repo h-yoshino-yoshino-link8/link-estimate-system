@@ -1,8 +1,8 @@
 # Execution Log (2026-02-17)
 
-- Timestamp: 2026-02-17 17:31:13 JST
+- Timestamp: 2026-02-17 17:52:06 JST
 - Branch: codex/build-link-estimate-system
-- Head: b437828
+- Head: 440143d
 
 ## Python compile check
 - Command: python3 -m py_compile scripts/build_workbook.py scripts/validate_workbook.py
@@ -27,20 +27,70 @@ Reminder: import VBA module and assign buttons in Excel UI.
 [PASS] Validation passed for: /Users/yoshinohiroshi/Library/Mobile Documents/iCloud~md~obsidian/Documents/情報オブシディアン/100_Cursor/link-estimate-system/excel/見積原価管理システム.xlsm
 - Result: PASS
 
+## API tests
+- Command: env PYTHONPATH=app/api python3 -m pytest -q app/api/tests
+....                                                                     [100%]
+=============================== warnings summary ===============================
+app/api/app/main.py:24
+  /Users/yoshinohiroshi/Library/Mobile Documents/iCloud~md~obsidian/Documents/情報オブシディアン/100_Cursor/link-estimate-system/app/api/app/main.py:24: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    @app.on_event("startup")
+
+../../../../../../Python/3.9/lib/python/site-packages/fastapi/applications.py:4495
+  /Users/yoshinohiroshi/Library/Python/3.9/lib/python/site-packages/fastapi/applications.py:4495: DeprecationWarning: 
+          on_event is deprecated, use lifespan event handlers instead.
+  
+          Read more about it in the
+          [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+          
+    return self.router.on_event(event_type)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+4 passed, 2 warnings in 0.49s
+- Result: PASS
+
+## Web build
+- Command: npm --prefix app/web run build
+
+> link-estimate-web@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.5
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/4) ...
+   Generating static pages (1/4) 
+   Generating static pages (2/4) 
+   Generating static pages (3/4) 
+ ✓ Generating static pages (4/4)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    2.54 kB        89.6 kB
+└ ○ /_not-found                          875 B            88 kB
++ First Load JS shared by all            87.1 kB
+  ├ chunks/23-f2c2ec5da154e115.js        31.5 kB
+  ├ chunks/fd9d1056-62aaf4b921c84028.js  53.7 kB
+  └ other shared chunks (total)          1.91 kB
+
+
+○  (Static)  prerendered as static content
+
+- Result: PASS
+
 ## Git status (short)
+ M .gitignore
  M README.md
- M "excel/\350\246\213\347\251\215\345\216\237\344\276\241\347\256\241\347\220\206\343\202\267\343\202\271\343\203\206\343\203\240.xlsx"
- M vba/Module_NewProject.bas
-?? .gitignore
-?? "docs/APP\345\214\226\350\251\263\347\264\260\350\250\255\350\250\210_20260217.md"
-?? "docs/APP\347\247\273\350\241\214\346\244\234\350\250\216_20260217.md"
-?? docs/BUILD_RUNBOOK_20260217.md
-?? docs/EXECUTION_LOG_20260217.md
-?? "docs/MVP\347\224\273\351\235\242API\350\250\255\350\250\210_20260217.md"
-?? "docs/PDF\344\273\225\346\247\230.md"
-?? "docs/\343\203\207\343\203\274\343\202\277\350\276\236\346\233\270.md"
-?? "docs/\346\251\237\350\203\275\344\273\225\346\247\230\345\207\215\347\265\220.md"
-?? "excel/\350\246\213\347\251\215\345\216\237\344\276\241\347\256\241\347\220\206\343\202\267\343\202\271\343\203\206\343\203\240.xlsm"
-?? scripts/
-?? vba/Module_NewProject_mac.bas
+ M docs/EXECUTION_LOG_20260217.md
+ M scripts/check_and_log.sh
+?? app/
+?? "docs/APP\345\256\237\350\243\205\350\250\210\347\224\273_20260217.md"
 
