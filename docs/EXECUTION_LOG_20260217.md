@@ -1,8 +1,8 @@
 # Execution Log (2026-02-17)
 
-- Timestamp: 2026-02-17 19:28:16 JST
+- Timestamp: 2026-02-17 21:21:16 JST
 - Branch: codex/build-link-estimate-system
-- Head: f1013a6
+- Head: 6902447
 
 ## Python compile check
 - Command: python3 -m py_compile scripts/build_workbook.py scripts/validate_workbook.py
@@ -50,7 +50,7 @@ app/api/app/main.py:24
     return self.router.on_event(event_type)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-10 passed, 2 warnings in 0.69s
+10 passed, 2 warnings in 0.72s
 - Result: PASS
 
 ## Web build
@@ -66,29 +66,37 @@ app/api/app/main.py:24
  ✓ Compiled successfully
    Linting and checking validity of types ...
    Collecting page data ...
-   Generating static pages (0/4) ...
-   Generating static pages (1/4) 
-   Generating static pages (2/4) 
-   Generating static pages (3/4) 
- ✓ Generating static pages (4/4)
+   Generating static pages (0/6) ...
+   Generating static pages (1/6) 
+   Generating static pages (2/6) 
+   Generating static pages (4/6) 
+ ✓ Generating static pages (6/6)
    Finalizing page optimization ...
    Collecting build traces ...
 
 Route (app)                              Size     First Load JS
-┌ ○ /                                    11 kB          98.1 kB
-└ ○ /_not-found                          875 B            88 kB
+┌ ○ /                                    4.36 kB        98.3 kB
+├ ○ /_not-found                          875 B            88 kB
+├ ○ /finance                             4.72 kB        98.6 kB
+├ ○ /projects                            3.5 kB         97.4 kB
+└ ƒ /projects/[projectId]                4.98 kB        98.9 kB
 + First Load JS shared by all            87.1 kB
   ├ chunks/23-c61e312c20c04c5e.js        31.5 kB
   ├ chunks/fd9d1056-b6e16a5f15b47ad4.js  53.7 kB
   └ other shared chunks (total)          1.94 kB
 
 
-○  (Static)  prerendered as static content
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
 
 - Result: PASS
 
 ## Git status (short)
  M app/web/app/globals.css
+ M app/web/app/layout.tsx
  M app/web/app/page.tsx
  M app/web/lib/api.ts
+?? app/web/app/finance/
+?? app/web/app/projects/
+?? docs/PRODUCT_REDESIGN_BLUEPRINT_20260217.md
 

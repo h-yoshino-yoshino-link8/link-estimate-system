@@ -45,6 +45,7 @@ export type Invoice = {
   project_id: string;
   invoice_amount: number;
   invoice_type?: string | null;
+  billed_at?: string | null;
   paid_amount: number;
   remaining_amount: number;
   status?: string | null;
@@ -62,6 +63,7 @@ export type Payment = {
   remaining_amount: number;
   status?: string | null;
   note?: string | null;
+  paid_at?: string | null;
 };
 
 export type DashboardSummary = {

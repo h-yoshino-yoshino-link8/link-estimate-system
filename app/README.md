@@ -5,6 +5,13 @@
 - `api/`: FastAPI backend
 - `web/`: Next.js frontend
 
+## Frontend IA (2026-02-17 redesign)
+
+- `/`: 経営ダッシュボード（売上・前年比・未回収/未払・期限超過）
+- `/projects`: 案件一覧 + 新規案件作成
+- `/projects/{projectId}`: 案件ワークスペース（明細/請求/支払/消込/PDF/メール文面）
+- `/finance`: 会計センター（横断消込・未入金/期限管理・領収書）
+
 ## MVP Endpoints
 
 - `GET /health`
