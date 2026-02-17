@@ -202,6 +202,7 @@ def sync_from_workbook(db: Session, workbook_path: str) -> SyncResult:
 
             existing.project_id = project_id
             existing.invoice_amount = _to_float(ws.cell(row, 7).value, 0.0)
+            existing.billed_at = _to_date(ws.cell(row, 5).value) or existing.billed_at or date.today()
             existing.note = _to_str(ws.cell(row, 12).value)
             invoices_upserted += 1
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -108,7 +109,7 @@ def create_invoice(payload: InvoiceCreate, db: Session = Depends(get_db)) -> Inv
         project_id=payload.project_id,
         invoice_amount=payload.invoice_amount,
         invoice_type=payload.invoice_type,
-        billed_at=payload.billed_at,
+        billed_at=payload.billed_at or date.today(),
         paid_amount=payload.paid_amount,
         remaining_amount=remaining,
         status=payload.status or _derive_invoice_status(payload.invoice_amount, payload.paid_amount),

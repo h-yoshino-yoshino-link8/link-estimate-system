@@ -1,8 +1,8 @@
 # Execution Log (2026-02-17)
 
-- Timestamp: 2026-02-17 19:08:31 JST
+- Timestamp: 2026-02-17 19:19:37 JST
 - Branch: codex/build-link-estimate-system
-- Head: 535272d
+- Head: 1ff207e
 
 ## Python compile check
 - Command: python3 -m py_compile scripts/build_workbook.py scripts/validate_workbook.py
@@ -29,7 +29,7 @@ Reminder: import VBA module and assign buttons in Excel UI.
 
 ## API tests
 - Command: env PYTHONPATH=app/api python3 -m pytest -q app/api/tests
-.........                                                                [100%]
+..........                                                               [100%]
 =============================== warnings summary ===============================
 app/api/app/main.py:24
   /Users/yoshinohiroshi/Library/Mobile Documents/iCloud~md~obsidian/Documents/情報オブシディアン/100_Cursor/link-estimate-system/app/api/app/main.py:24: DeprecationWarning: 
@@ -50,7 +50,7 @@ app/api/app/main.py:24
     return self.router.on_event(event_type)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-9 passed, 2 warnings in 0.64s
+10 passed, 2 warnings in 0.67s
 - Result: PASS
 
 ## Web build
@@ -75,7 +75,7 @@ app/api/app/main.py:24
    Collecting build traces ...
 
 Route (app)                              Size     First Load JS
-┌ ○ /                                    11.2 kB        98.4 kB
+┌ ○ /                                    11.5 kB        98.7 kB
 └ ○ /_not-found                          875 B            88 kB
 + First Load JS shared by all            87.1 kB
   ├ chunks/23-c61e312c20c04c5e.js        31.5 kB
@@ -88,6 +88,14 @@ Route (app)                              Size     First Load JS
 - Result: PASS
 
 ## Git status (short)
+ M app/README.md
+ M app/api/app/routers/dashboard.py
+ M app/api/app/routers/finance.py
+ M app/api/app/schemas.py
+ M app/api/app/services/excel_sync.py
+ M app/api/tests/test_api.py
  M app/web/app/globals.css
  M app/web/app/page.tsx
+ M app/web/lib/api.ts
+ M docs/EXECUTION_LOG_20260217.md
 

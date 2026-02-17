@@ -56,6 +56,36 @@ export type DashboardSummary = {
   item_total_amount: number;
 };
 
+export type DashboardMonthlySalesPoint = {
+  month: string;
+  amount: number;
+};
+
+export type DashboardActiveProject = {
+  project_id: string;
+  project_name: string;
+  customer_name: string;
+  project_status: string;
+  site_address?: string | null;
+  created_at: string;
+  invoice_total_amount: number;
+  payment_total_amount: number;
+  gross_estimate: number;
+};
+
+export type DashboardOverview = {
+  current_month_sales: number;
+  ytd_sales: number;
+  all_time_sales: number;
+  last_year_ytd_sales: number;
+  yoy_growth_rate: number;
+  receivable_balance: number;
+  payable_balance: number;
+  active_project_count: number;
+  monthly_sales_current_year: DashboardMonthlySalesPoint[];
+  active_projects: DashboardActiveProject[];
+};
+
 export async function getCustomers() {
   const res = await fetch(`${API_BASE}/api/v1/customers`, { cache: "no-store" });
   if (!res.ok) throw new Error("顧客一覧の取得に失敗しました");
@@ -248,6 +278,12 @@ export async function getDashboardSummary() {
   const res = await fetch(`${API_BASE}/api/v1/dashboard/summary`, { cache: "no-store" });
   if (!res.ok) throw new Error("ダッシュボード集計取得に失敗しました");
   return (await res.json()) as DashboardSummary;
+}
+
+export async function getDashboardOverview() {
+  const res = await fetch(`${API_BASE}/api/v1/dashboard/overview`, { cache: "no-store" });
+  if (!res.ok) throw new Error("ダッシュボード概要取得に失敗しました");
+  return (await res.json()) as DashboardOverview;
 }
 
 export async function exportEstimate(projectId: string) {

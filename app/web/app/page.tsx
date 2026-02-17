@@ -11,7 +11,7 @@ import {
   exportEstimate,
   exportReceipt,
   getCustomers,
-  getDashboardSummary,
+  getDashboardOverview,
   getInvoices,
   getPayments,
   getProjectItems,
@@ -20,7 +20,7 @@ import {
   syncExcelUpload,
   updateInvoice,
   updatePayment,
-  type DashboardSummary,
+  type DashboardOverview,
   type Invoice,
   type Payment,
   type ProjectItem,
@@ -40,7 +40,7 @@ export default function HomePage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
   const [allPayments, setAllPayments] = useState<Payment[]>([]);
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [overview, setOverview] = useState<DashboardOverview | null>(null);
 
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [loadingWorkItems, setLoadingWorkItems] = useState(true);
@@ -86,16 +86,6 @@ export default function HomePage() {
     [workItems],
   );
 
-  const statusEntries = useMemo(() => {
-    if (!summary) return [] as Array<[string, number]>;
-    return Object.entries(summary.project_status_counts).sort((a, b) => b[1] - a[1]);
-  }, [summary]);
-
-  const maxStatusCount = useMemo(
-    () => (statusEntries.length > 0 ? Math.max(...statusEntries.map(([, count]) => count), 1) : 1),
-    [statusEntries],
-  );
-
   const pendingInvoices = useMemo(
     () =>
       allInvoices
@@ -114,24 +104,39 @@ export default function HomePage() {
     [allPayments],
   );
 
+  const totalInvoiceAmount = useMemo(
+    () => allInvoices.reduce((sum, row) => sum + Number(row.invoice_amount || 0), 0),
+    [allInvoices],
+  );
+
+  const totalPaymentAmount = useMemo(
+    () => allPayments.reduce((sum, row) => sum + Number(row.ordered_amount || 0), 0),
+    [allPayments],
+  );
+
   const invoiceCollectionRate = useMemo(() => {
-    const total = summary?.invoice_total_amount ?? 0;
-    const remaining = summary?.invoice_remaining_amount ?? 0;
+    const total = totalInvoiceAmount;
+    const remaining = overview?.receivable_balance ?? 0;
     if (total <= 0) return 0;
     return Math.max(0, Math.min(100, ((total - remaining) / total) * 100));
-  }, [summary]);
+  }, [overview, totalInvoiceAmount]);
 
   const paymentSettlementRate = useMemo(() => {
-    const total = summary?.payment_total_amount ?? 0;
-    const remaining = summary?.payment_remaining_amount ?? 0;
+    const total = totalPaymentAmount;
+    const remaining = overview?.payable_balance ?? 0;
     if (total <= 0) return 0;
     return Math.max(0, Math.min(100, ((total - remaining) / total) * 100));
-  }, [summary]);
+  }, [overview, totalPaymentAmount]);
 
-  const grossSpread = useMemo(
-    () => (summary?.invoice_total_amount ?? 0) - (summary?.payment_total_amount ?? 0),
-    [summary],
+  const grossSpread = useMemo(() => totalInvoiceAmount - totalPaymentAmount, [totalInvoiceAmount, totalPaymentAmount]);
+
+  const monthlySalesPoints = overview?.monthly_sales_current_year ?? [];
+  const monthlyPeak = useMemo(
+    () => (monthlySalesPoints.length > 0 ? Math.max(...monthlySalesPoints.map((x) => x.amount), 1) : 1),
+    [monthlySalesPoints],
   );
+  const growthRate = overview?.yoy_growth_rate ?? 0;
+  const growthText = `${growthRate >= 0 ? "+" : ""}${growthRate.toFixed(1)}%`;
 
   const loadCustomers = async () => {
     const data = await getCustomers();
@@ -182,13 +187,13 @@ export default function HomePage() {
     }
   };
 
-  const loadSummary = async () => {
-    const [summaryData, invoiceRows, paymentRows] = await Promise.all([
-      getDashboardSummary(),
+  const loadOverview = async () => {
+    const [overviewData, invoiceRows, paymentRows] = await Promise.all([
+      getDashboardOverview(),
       getInvoices(),
       getPayments(),
     ]);
-    setSummary(summaryData);
+    setOverview(overviewData);
     setAllInvoices(invoiceRows);
     setAllPayments(paymentRows);
   };
@@ -218,7 +223,7 @@ export default function HomePage() {
       try {
         await loadProjectItems("P-003");
         await loadFinance("P-003");
-        await loadSummary();
+        await loadOverview();
       } catch {
         // ignore initial load errors
       }
@@ -250,7 +255,7 @@ export default function HomePage() {
       setSiteAddress("");
       await loadProjectItems(created.project_id);
       await loadFinance(created.project_id);
-      await loadSummary();
+      await loadOverview();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "案件作成に失敗しました");
     } finally {
@@ -296,7 +301,7 @@ export default function HomePage() {
       await loadCustomers();
       await loadWorkItems();
       await loadFinance(projectIdForInvoice);
-      await loadSummary();
+      await loadOverview();
       setMessage(
         `同期完了: 顧客${result.customers_upserted} / 案件${result.projects_upserted} / 請求${result.invoices_upserted} / 支払${result.payments_upserted} / 項目${result.work_items_upserted}`,
       );
@@ -322,7 +327,7 @@ export default function HomePage() {
         quantity: Number(itemQuantity || "1"),
       });
       await loadProjectItems(projectIdForItem);
-      await loadSummary();
+      await loadOverview();
       setMessage("案件明細を追加しました");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "案件明細追加に失敗しました");
@@ -343,7 +348,7 @@ export default function HomePage() {
       });
       setInvoiceIdForPdf(created.invoice_id);
       await loadFinance(projectIdForInvoice);
-      await loadSummary();
+      await loadOverview();
       setMessage(`請求を登録しました: ${created.invoice_id}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "請求登録に失敗しました");
@@ -364,7 +369,7 @@ export default function HomePage() {
         status: "❌未支払",
       });
       await loadFinance(projectIdForPayment);
-      await loadSummary();
+      await loadOverview();
       setMessage(`支払を登録しました: ${created.payment_id}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "支払登録に失敗しました");
@@ -386,7 +391,7 @@ export default function HomePage() {
         paid_amount: Number(invoicePaidToUpdate || "0"),
       });
       await loadFinance(updated.project_id);
-      await loadSummary();
+      await loadOverview();
       setMessage(`請求を更新しました: ${updated.invoice_id} / ${updated.status}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "請求更新に失敗しました");
@@ -408,7 +413,7 @@ export default function HomePage() {
         paid_amount: Number(paymentPaidToUpdate || "0"),
       });
       await loadFinance(updated.project_id);
-      await loadSummary();
+      await loadOverview();
       setMessage(`支払を更新しました: ${updated.payment_id} / ${updated.status}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "支払更新に失敗しました");
@@ -435,7 +440,7 @@ export default function HomePage() {
     setMessage("");
     try {
       await loadFinance(projectIdForInvoice);
-      await loadSummary();
+      await loadOverview();
       setMessage("請求/支払一覧を再読込しました");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "請求/支払取得に失敗しました");
@@ -478,48 +483,52 @@ export default function HomePage() {
 
       <section className="kpi-grid">
         <article className="kpi-card">
-          <p className="kpi-label">案件数</p>
-          <p className="kpi-value">{summary?.project_total ?? 0}</p>
-          <p className="kpi-note">進行中の全案件</p>
+          <p className="kpi-label">今月売上</p>
+          <p className="kpi-value">{yen(overview?.current_month_sales ?? 0)}</p>
+          <p className="kpi-note">当月請求ベース</p>
         </article>
         <article className="kpi-card">
-          <p className="kpi-label">請求残額</p>
-          <p className="kpi-value">{yen(summary?.invoice_remaining_amount ?? 0)}</p>
-          <p className="kpi-note">回収待ち</p>
+          <p className="kpi-label">通年売上（YTD）</p>
+          <p className="kpi-value">{yen(overview?.ytd_sales ?? 0)}</p>
+          <p className="kpi-note">今年の累計</p>
         </article>
         <article className="kpi-card">
-          <p className="kpi-label">支払残額</p>
-          <p className="kpi-value">{yen(summary?.payment_remaining_amount ?? 0)}</p>
-          <p className="kpi-note">支払待ち</p>
+          <p className="kpi-label">現在売上累計</p>
+          <p className="kpi-value">{yen(overview?.all_time_sales ?? 0)}</p>
+          <p className="kpi-note">全期間累計</p>
         </article>
         <article className="kpi-card">
-          <p className="kpi-label">粗利見込</p>
-          <p className="kpi-value">{yen(grossSpread)}</p>
-          <p className="kpi-note">請求合計 - 支払合計</p>
+          <p className="kpi-label">前年比成長率</p>
+          <p className={`kpi-value ${growthRate >= 0 ? "kpi-growth-plus" : "kpi-growth-minus"}`}>{growthText}</p>
+          <p className="kpi-note">前年同期比</p>
         </article>
       </section>
 
       <section className="dash-grid">
         <article className="panel">
-          <h2>案件ステータス分布</h2>
-          <div className="status-stack">
-            {statusEntries.length === 0 ? <p className="item-row">データなし</p> : null}
-            {statusEntries.map(([status, count]) => (
-              <div key={status} className="status-row">
-                <div className="status-meta">
-                  <span>{status}</span>
-                  <strong>{count}</strong>
+          <h2>売上グラフ（今年）</h2>
+          <div className="chart-grid">
+            {monthlySalesPoints.map((point) => (
+              <div key={point.month} className="chart-col">
+                <div className="chart-track">
+                  <span className="chart-bar" style={{ height: `${Math.max((point.amount / monthlyPeak) * 100, 2)}%` }} />
                 </div>
-                <div className="status-track">
-                  <span style={{ width: `${Math.max((count / maxStatusCount) * 100, 8)}%` }} />
-                </div>
+                <p className="chart-label">{point.month}</p>
+                <p className="chart-value">{yen(point.amount)}</p>
               </div>
             ))}
           </div>
         </article>
 
         <article className="panel">
-          <h2>消込進捗</h2>
+          <h2>経営指標</h2>
+          <div className="items-box">
+            <p className="item-row">前年同期売上: {yen(overview?.last_year_ytd_sales ?? 0)}</p>
+            <p className="item-row">請求残額（売掛）: {yen(overview?.receivable_balance ?? 0)}</p>
+            <p className="item-row">支払残額（買掛）: {yen(overview?.payable_balance ?? 0)}</p>
+            <p className="item-row">粗利見込: {yen(grossSpread)}</p>
+            <p className="item-row">稼働案件数: {overview?.active_project_count ?? 0}</p>
+          </div>
           <div className="metric-block">
             <div className="metric-row">
               <span>請求回収率</span>
@@ -544,50 +553,40 @@ export default function HomePage() {
         </article>
 
         <article className="panel">
+          <h2>稼働案件（どこが動いているか）</h2>
+          <div className="items-box">
+            {(overview?.active_projects ?? []).slice(0, 8).map((project) => (
+              <div key={project.project_id} className="active-row">
+                <p className="item-row active-title">
+                  {project.project_id} / {project.project_name}
+                </p>
+                <p className="item-row">
+                  {project.project_status} / 売上 {yen(project.invoice_total_amount)} / 原価 {yen(project.payment_total_amount)}
+                </p>
+              </div>
+            ))}
+            {(overview?.active_projects.length ?? 0) === 0 ? (
+              <p className="item-row">現在稼働中の案件はありません</p>
+            ) : null}
+          </div>
           <h2>未消込アラート</h2>
           <div className="items-box">
-            <p className="item-row">請求 未消込</p>
             {pendingInvoices.slice(0, 3).map((inv) => (
               <p key={inv.invoice_id} className="item-row">
-                {inv.invoice_id}: 残{yen(inv.remaining_amount)}
+                請求 {inv.invoice_id}: 残{yen(inv.remaining_amount)}
               </p>
             ))}
-            <p className="item-row">支払 未消込</p>
             {pendingPayments.slice(0, 3).map((pay) => (
               <p key={pay.payment_id} className="item-row">
-                {pay.payment_id}: 残{yen(pay.remaining_amount)}
+                支払 {pay.payment_id}: 残{yen(pay.remaining_amount)}
               </p>
             ))}
-            {pendingInvoices.length === 0 && pendingPayments.length === 0 ? (
-              <p className="item-row">未消込はありません</p>
-            ) : null}
+            {pendingInvoices.length === 0 && pendingPayments.length === 0 ? <p className="item-row">未消込はありません</p> : null}
           </div>
         </article>
       </section>
 
       <section className="grid">
-        <article className="panel">
-          <h2>ダッシュボード集計</h2>
-          <div className="items-box">
-            <p className="item-row">案件数: {summary?.project_total ?? 0}</p>
-            <p className="item-row">請求合計: {yen(summary?.invoice_total_amount ?? 0)}</p>
-            <p className="item-row">請求残額: {yen(summary?.invoice_remaining_amount ?? 0)}</p>
-            <p className="item-row">支払合計: {yen(summary?.payment_total_amount ?? 0)}</p>
-            <p className="item-row">支払残額: {yen(summary?.payment_remaining_amount ?? 0)}</p>
-            <p className="item-row">明細合計: {yen(summary?.item_total_amount ?? 0)}</p>
-            {summary
-              ? Object.entries(summary.project_status_counts).map(([status, count]) => (
-                  <p className="item-row" key={status}>
-                    {status}: {count}
-                  </p>
-                ))
-              : null}
-          </div>
-          <button onClick={onReloadFinance} disabled={working}>
-            集計を更新
-          </button>
-        </article>
-
         <article className="panel">
           <h2>初期データ取り込み（Excel）</h2>
           <label>

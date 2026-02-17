@@ -249,3 +249,19 @@ def test_dashboard_summary() -> None:
         assert isinstance(body["project_status_counts"], dict)
         assert body["invoice_total_amount"] >= 0
         assert body["payment_total_amount"] >= 0
+
+
+def test_dashboard_overview() -> None:
+    with TestClient(app) as client:
+        resp = client.get("/api/v1/dashboard/overview")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert "current_month_sales" in body
+        assert "ytd_sales" in body
+        assert "all_time_sales" in body
+        assert "last_year_ytd_sales" in body
+        assert "yoy_growth_rate" in body
+        assert "active_project_count" in body
+        assert isinstance(body["monthly_sales_current_year"], list)
+        assert len(body["monthly_sales_current_year"]) == 12
+        assert isinstance(body["active_projects"], list)

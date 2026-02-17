@@ -25,6 +25,7 @@
 - `POST /api/v1/payments`
 - `PATCH /api/v1/payments/{payment_id}`
 - `GET /api/v1/dashboard/summary`
+- `GET /api/v1/dashboard/overview`
 
 ## Local Run (without Docker)
 

@@ -172,3 +172,33 @@ class DashboardSummaryResponse(BaseModel):
     payment_total_amount: float
     payment_remaining_amount: float
     item_total_amount: float
+
+
+class DashboardMonthlySalesPoint(BaseModel):
+    month: str
+    amount: float
+
+
+class DashboardActiveProject(BaseModel):
+    project_id: str
+    project_name: str
+    customer_name: str
+    project_status: str
+    site_address: Optional[str] = None
+    created_at: date
+    invoice_total_amount: float
+    payment_total_amount: float
+    gross_estimate: float
+
+
+class DashboardOverviewResponse(BaseModel):
+    current_month_sales: float
+    ytd_sales: float
+    all_time_sales: float
+    last_year_ytd_sales: float
+    yoy_growth_rate: float
+    receivable_balance: float
+    payable_balance: float
+    active_project_count: int
+    monthly_sales_current_year: list[DashboardMonthlySalesPoint]
+    active_projects: list[DashboardActiveProject]
