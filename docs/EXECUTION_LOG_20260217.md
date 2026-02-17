@@ -1,8 +1,8 @@
 # Execution Log (2026-02-17)
 
-- Timestamp: 2026-02-17 22:02:56 JST
-- Branch: codex/build-link-estimate-system
-- Head: fb7855b
+- Timestamp: 2026-02-17 22:04:13 JST
+- Branch: main
+- Head: 872917c
 
 ## Python compile check
 - Command: python3 -m py_compile scripts/build_workbook.py scripts/validate_workbook.py
@@ -30,7 +30,7 @@ Reminder: import VBA module and assign buttons in Excel UI.
 ## API tests
 - Command: env PYTHONPATH=app/api python3 -m pytest -q app/api/tests
 ..........                                                               [100%]
-10 passed in 0.72s
+10 passed in 0.77s
 - Result: PASS
 
 ## Web build
@@ -43,7 +43,7 @@ Reminder: import VBA module and assign buttons in Excel UI.
    - Environments: .env.local
 
    Creating an optimized production build ...
- ✓ Compiled successfully in 599ms
+ ✓ Compiled successfully in 699ms
    Linting and checking validity of types ...
    Collecting page data ...
    Generating static pages (0/6) ...
@@ -72,24 +72,5 @@ Route (app)                                 Size  First Load JS
 - Result: PASS
 
 ## Git status (short)
- M app/api/app/config.py
- M app/api/app/main.py
- M app/api/app/routers/documents.py
- M app/api/app/routers/finance.py
- M app/api/app/routers/projects.py
- M app/api/app/routers/sync.py
- M app/api/app/routers/work_items.py
- M app/api/tests/test_api.py
- M app/web/app/finance/page.tsx
- M app/web/app/globals.css
- M app/web/app/layout.tsx
- M app/web/app/page.tsx
- M app/web/app/projects/[projectId]/page.tsx
- M app/web/app/projects/page.tsx
- M app/web/lib/api.ts
- M app/web/next-env.d.ts
- M app/web/package-lock.json
- M app/web/package.json
-?? app/api/app/security.py
-?? app/web/components/
+ M docs/DEPLOY_LOG_20260217.md
 
