@@ -34,3 +34,10 @@
 - Production URL: https://web-huwpjthyi-h-yoshino-link-8jps-projects.vercel.app
 - Access check: `HTTP 200`
 - Change: Simplified project workspace to step-by-step workflow layout (STEP1〜STEP4) with clearer primary actions.
+
+## Vercel Deploy (2026-02-17 22:56:53 JST)
+- Project: `h-yoshino-link-8jps-projects/web`
+- Commit: `35b8118`
+- Production URL: https://web-pw38wacj5-h-yoshino-link-8jps-projects.vercel.app
+- Access check: `HTTP 200`
+- Fix: In local mode, skip remote API calls and save directly to local data to avoid project creation failures.

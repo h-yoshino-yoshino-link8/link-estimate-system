@@ -98,3 +98,15 @@ Route (app)                                 Size  First Load JS
 - Build result: PASS
 - Deploy URL: https://web-huwpjthyi-h-yoshino-link-8jps-projects.vercel.app
 - Access check: HTTP 200
+
+## Project creation reliability fix (local mode)
+- Timestamp: 2026-02-17 22:56:53 JST
+- Branch: `main`
+- Commit: `35b8118`
+- File: `app/web/lib/api.ts`
+- Change:
+  - `withFallback` now bypasses remote calls when local mode is active.
+  - `createProject` error text now includes status fallback when response body is empty.
+- Build result: PASS
+- Deploy URL: https://web-pw38wacj5-h-yoshino-link-8jps-projects.vercel.app
+- Access check: HTTP 200
