@@ -30,6 +30,34 @@ function yen(value: number) {
   return `¥${Math.round(value).toLocaleString()}`;
 }
 
+type AuditLogEntry = {
+  id: string;
+  project_id: string;
+  category: "見積" | "請求" | "支払" | "帳票";
+  action: string;
+  detail: string;
+  created_at: string;
+};
+
+const AUDIT_LOG_KEY = "link_estimate_audit_logs_v1";
+
+function readAuditLogStore(): Record<string, AuditLogEntry[]> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(AUDIT_LOG_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, AuditLogEntry[]>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeAuditLogStore(store: Record<string, AuditLogEntry[]>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(AUDIT_LOG_KEY, JSON.stringify(store));
+}
+
 export default function ProjectWorkspacePage() {
   const params = useParams<{ projectId: string }>();
   const projectId = params.projectId;
@@ -44,6 +72,9 @@ export default function ProjectWorkspacePage() {
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState("");
   const [localMode, setLocalMode] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState("");
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
 
   const [masterItemId, setMasterItemId] = useState("");
   const [itemQuantity, setItemQuantity] = useState("1");
@@ -222,6 +253,45 @@ export default function ProjectWorkspacePage() {
     };
   }, []);
 
+  useEffect(() => {
+    const store = readAuditLogStore();
+    setAuditLogs(store[projectId] ?? []);
+  }, [projectId]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const appendAuditLog = (
+    category: AuditLogEntry["category"],
+    action: string,
+    detail: string,
+  ) => {
+    if (typeof window === "undefined") return;
+    const entry: AuditLogEntry = {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+      project_id: projectId,
+      category,
+      action,
+      detail,
+      created_at: new Date().toISOString(),
+    };
+    const store = readAuditLogStore();
+    const next = [entry, ...(store[projectId] ?? [])].slice(0, 120);
+    store[projectId] = next;
+    writeAuditLogStore(store);
+    setAuditLogs(next);
+  };
+
+  const showPreview = (blob: Blob, title: string) => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    const url = URL.createObjectURL(blob);
+    setPreviewUrl(url);
+    setPreviewTitle(title);
+  };
+
   const onReload = async () => {
     setWorking(true);
     setMessage("");
@@ -244,6 +314,7 @@ export default function ProjectWorkspacePage() {
         quantity: Number(itemQuantity || "1"),
       });
       await loadWorkspace();
+      appendAuditLog("見積", "明細追加", `項目ID ${masterItemId || "-"} / 数量 ${itemQuantity || "1"}`);
       setMessage("案件明細を追加しました");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "案件明細追加に失敗しました");
@@ -265,6 +336,7 @@ export default function ProjectWorkspacePage() {
       });
       await loadWorkspace();
       setInvoiceIdForPdf(created.invoice_id);
+      appendAuditLog("請求", "請求登録", `${created.invoice_id} / 請求額 ${yen(created.invoice_amount)}`);
       setMessage(`請求を登録しました: ${created.invoice_id}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "請求登録に失敗しました");
@@ -285,6 +357,7 @@ export default function ProjectWorkspacePage() {
         status: "❌未支払",
       });
       await loadWorkspace();
+      appendAuditLog("支払", "支払登録", `${created.payment_id} / 発注額 ${yen(created.ordered_amount)}`);
       setMessage(`支払を登録しました: ${created.payment_id}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "支払登録に失敗しました");
@@ -306,6 +379,7 @@ export default function ProjectWorkspacePage() {
       });
       await loadWorkspace();
       setInvoiceIdForPdf(updated.invoice_id);
+      appendAuditLog("請求", "入金反映", `${updated.invoice_id} / 入金額 ${yen(updated.paid_amount)}`);
       setMessage(`請求を更新しました: ${updated.invoice_id} / ${updated.status}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "請求更新に失敗しました");
@@ -326,6 +400,7 @@ export default function ProjectWorkspacePage() {
         paid_amount: Number(paymentPaidToUpdate || "0"),
       });
       await loadWorkspace();
+      appendAuditLog("支払", "支払消込反映", `${updated.payment_id} / 支払額 ${yen(updated.paid_amount)}`);
       setMessage(`支払を更新しました: ${updated.payment_id} / ${updated.status}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "支払更新に失敗しました");
@@ -340,6 +415,8 @@ export default function ProjectWorkspacePage() {
     try {
       const { blob } = await exportEstimate(projectId);
       downloadBlob(blob, `estimate_${projectId}.pdf`);
+      showPreview(blob, `見積書プレビュー / ${projectId}`);
+      appendAuditLog("帳票", "見積書PDF出力", `estimate_${projectId}.pdf`);
       setMessage(`見積書PDFを出力しました: ${projectId}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "見積書PDF出力に失敗しました");
@@ -358,6 +435,8 @@ export default function ProjectWorkspacePage() {
     try {
       const { blob } = await exportReceipt(invoiceIdForPdf);
       downloadBlob(blob, `receipt_${invoiceIdForPdf}.pdf`);
+      showPreview(blob, `領収書プレビュー / ${invoiceIdForPdf}`);
+      appendAuditLog("帳票", "領収書PDF出力", `receipt_${invoiceIdForPdf}.pdf`);
       setMessage(`領収書PDFを出力しました: ${invoiceIdForPdf}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "領収書PDF出力に失敗しました");
@@ -386,6 +465,7 @@ export default function ProjectWorkspacePage() {
     ].join("\n"));
 
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    appendAuditLog("帳票", "請求メール文面作成", `対象請求ID ${selectedInvoice.invoice_id}`);
     setMessage("メール文面を生成しました（メーラーが開きます）");
   };
 
@@ -745,6 +825,17 @@ export default function ProjectWorkspacePage() {
                   ))}
                 </select>
               </label>
+              <div className="fm-preview-meta">
+                <strong>帳票プレビュー（A4横）</strong>
+                <span>{previewTitle || "未出力"}</span>
+              </div>
+              <div className="fm-preview-shell">
+                {previewUrl ? (
+                  <iframe title={previewTitle || "帳票プレビュー"} src={previewUrl} />
+                ) : (
+                  <p className="fm-row-note">見積書PDFまたは領収書PDFを出力すると、ここにプレビューが表示されます。</p>
+                )}
+              </div>
               <div className="table-wrap">
                 <table className="table fm-table-dense">
                   <thead>
@@ -792,6 +883,28 @@ export default function ProjectWorkspacePage() {
                       {row.type} / {row.date || "-"}
                     </strong>
                     <p className="fm-row-note">{row.label}</p>
+                  </li>
+                ))}
+              </ul>
+            </article>
+
+            <article className="fm-card">
+              <h2>変更履歴（監査ログ）</h2>
+              <ul className="fm-audit-list">
+                {auditLogs.length === 0 ? (
+                  <li>
+                    <strong>履歴なし</strong>
+                    <p className="fm-row-note">請求/支払/帳票操作を実行すると履歴が保存されます。</p>
+                  </li>
+                ) : null}
+                {auditLogs.map((row) => (
+                  <li key={row.id}>
+                    <div className="fm-audit-head">
+                      <span className="fm-audit-cat">{row.category}</span>
+                      <strong>{row.action}</strong>
+                      <time>{new Date(row.created_at).toLocaleString("ja-JP")}</time>
+                    </div>
+                    <p className="fm-row-note">{row.detail}</p>
                   </li>
                 ))}
               </ul>
