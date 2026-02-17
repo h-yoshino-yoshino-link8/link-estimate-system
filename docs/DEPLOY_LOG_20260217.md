@@ -68,3 +68,10 @@
 - Production URL: https://web-5dfzjhor7-h-yoshino-link-8jps-projects.vercel.app
 - Access check: `HTTP 200`
 - Change: Rebuilt project workspace into fixed 3-column cockpit (estimate, invoice/settlement, payment/docs/timeline).
+
+## Vercel Deploy (2026-02-18 08:02:33 JST)
+- Project: `h-yoshino-link-8jps-projects/web`
+- Commit: `05313a7`
+- Production URL: https://web-7l87e9evn-h-yoshino-link-8jps-projects.vercel.app
+- Access check: `HTTP 200`
+- Change: Added in-page A4 document preview and persistent per-project audit log for estimate/invoice/payment/document actions.
