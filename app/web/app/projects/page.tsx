@@ -24,6 +24,7 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState("");
+  const [formError, setFormError] = useState("");
   const [localMode, setLocalMode] = useState(false);
 
   const [customerId, setCustomerId] = useState("C-001");
@@ -80,19 +81,25 @@ export default function ProjectsPage() {
 
   const onCreateProject = async () => {
     if (!projectName.trim()) {
-      setMessage("物件名を入力してください");
+      setFormError("物件名を入力してください");
+      return;
+    }
+    const margin = Number(marginRate || "0");
+    if (!Number.isFinite(margin) || margin < 0 || margin > 1) {
+      setFormError("目標粗利率は 0〜1 の範囲で入力してください（例: 0.25）");
       return;
     }
 
     setWorking(true);
     setMessage("");
+    setFormError("");
     try {
       const created = await createProject({
         customer_id: customerId,
         project_name: projectName,
         site_address: siteAddress,
         owner_name: ownerName,
-        target_margin_rate: Number(marginRate || "0.25"),
+        target_margin_rate: margin,
       });
       await load();
       setProjectName("");
@@ -100,7 +107,8 @@ export default function ProjectsPage() {
       setMessage(`案件を作成しました: ${created.project_id}${isLocalModeEnabled() ? "（ローカル保存）" : ""}`);
       router.push(`/projects/${created.project_id}`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "案件作成に失敗しました");
+      const detail = error instanceof Error ? error.message.trim() : "";
+      setMessage(detail || "案件作成に失敗しました。通信設定とローカルモードを確認してください。");
     } finally {
       setWorking(false);
     }
@@ -144,6 +152,7 @@ export default function ProjectsPage() {
             目標粗利率
             <input value={marginRate} onChange={(e) => setMarginRate(e.target.value)} />
           </label>
+          {formError ? <p className="form-error">{formError}</p> : null}
           <p className="fm-row-note">入力後に保存ボタンを押すと、案件が作成されて案件ワークスペースへ移動します。</p>
           <button onClick={onCreateProject} disabled={working || loading}>
             保存して案件を作成

@@ -521,6 +521,17 @@ button:disabled {
   font-weight: 600;
 }
 
+.form-error {
+  margin: 0;
+  border-radius: 8px;
+  border: 1px solid #e9a2a2;
+  background: #ffecec;
+  color: #8a2020;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .fm-shell {
   background: #585b62;
   border: 2px solid #2f3135;
@@ -739,6 +750,52 @@ button:disabled {
   font-weight: 600;
 }
 
+.fm-action-banner {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: start;
+  border: 1px solid #2d9ac2;
+  background: rgba(7, 56, 73, 0.5);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.fm-action-label {
+  margin: 0;
+  color: #93daf3;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.fm-step-chips {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fm-step-chip {
+  border-radius: 999px;
+  border: 1px solid #7194a3;
+  color: #d8edf8;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+}
+
+.fm-step-chip.is-done {
+  border-color: #77d7aa;
+  background: rgba(29, 173, 110, 0.25);
+  color: #dcffef;
+}
+
+.fm-quick-actions {
+  display: grid;
+  gap: 6px;
+}
+
 .fm-doc-actions {
   display: flex;
   flex-wrap: wrap;
@@ -807,6 +864,10 @@ button:disabled {
   }
 
   .fm-split {
+    grid-template-columns: 1fr;
+  }
+
+  .fm-action-banner {
     grid-template-columns: 1fr;
   }
 }

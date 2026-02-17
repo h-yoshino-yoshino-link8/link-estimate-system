@@ -94,6 +94,41 @@ export default function ProjectWorkspacePage() {
   const revenueBase = invoiceTotal > 0 ? invoiceTotal : estimateTotal;
   const grossEstimate = revenueBase - paymentTotal;
   const grossRate = revenueBase > 0 ? (grossEstimate / revenueBase) * 100 : 0;
+  const stepEstimateDone = projectItems.length > 0;
+  const stepInvoiceDone = invoices.length > 0;
+  const stepInvoiceSettled = invoices.length > 0 && invoiceRemaining <= 0;
+  const stepPaymentDone = payments.length > 0;
+
+  const nextAction = useMemo(() => {
+    if (!stepEstimateDone) {
+      return {
+        title: "STEP 1: 見積明細を1件以上追加してください",
+        detail: "工事項目と数量を入力して「明細追加」を押してください。",
+      };
+    }
+    if (!stepInvoiceDone) {
+      return {
+        title: "STEP 2: 請求を登録してください",
+        detail: "請求額を入力し「請求を登録」で請求IDを発行します。",
+      };
+    }
+    if (!stepInvoiceSettled) {
+      return {
+        title: "STEP 2: 入金反映を完了してください",
+        detail: "更新対象請求IDを選び、入金額を更新して未入金残を0にします。",
+      };
+    }
+    if (!stepPaymentDone) {
+      return {
+        title: "STEP 3: 支払を登録してください",
+        detail: "業者支払を登録し、必要に応じて支払消込を反映します。",
+      };
+    }
+    return {
+      title: "STEP 4: 書類発行と連絡へ進めます",
+      detail: "見積書/領収書PDFの出力と請求メール文面作成を実行できます。",
+    };
+  }, [stepEstimateDone, stepInvoiceDone, stepInvoiceSettled, stepPaymentDone]);
 
   const loadWorkspace = async () => {
     const [projectResp, workItemsResp, itemsResp, invoicesResp, paymentsResp] = await Promise.all([
@@ -378,9 +413,37 @@ export default function ProjectWorkspacePage() {
 
         {localMode ? <p className="warning">ローカルモード: このブラウザ内に保存されます（サーバー未接続）。</p> : null}
 
+        <section className="fm-action-banner">
+          <div>
+            <p className="fm-action-label">次にやること</p>
+            <strong>{nextAction.title}</strong>
+            <p className="fm-step-note">{nextAction.detail}</p>
+            <div className="fm-step-chips">
+              <span className={`fm-step-chip ${stepEstimateDone ? "is-done" : ""}`}>STEP1 見積</span>
+              <span className={`fm-step-chip ${stepInvoiceDone ? "is-done" : ""}`}>STEP2 請求</span>
+              <span className={`fm-step-chip ${stepInvoiceSettled ? "is-done" : ""}`}>STEP2 入金</span>
+              <span className={`fm-step-chip ${stepPaymentDone ? "is-done" : ""}`}>STEP3 支払</span>
+            </div>
+          </div>
+          <div className="fm-quick-actions">
+            <a href="#step-estimate" className="fm-btn fm-btn-ghost">
+              STEP1へ
+            </a>
+            <a href="#step-invoice" className="fm-btn fm-btn-ghost">
+              STEP2へ
+            </a>
+            <a href="#step-payment" className="fm-btn fm-btn-ghost">
+              STEP3へ
+            </a>
+            <a href="#step-docs" className="fm-btn fm-btn-ghost">
+              STEP4へ
+            </a>
+          </div>
+        </section>
+
         <div className="fm-layout">
           <section className="fm-main">
-            <article className="fm-card">
+            <article id="step-estimate" className="fm-card">
               <h2>STEP 1: 見積を作る</h2>
               <p className="fm-step-note">工事項目を選んで「明細追加」を押します。</p>
               <div className="fm-inline-grid">
@@ -434,7 +497,7 @@ export default function ProjectWorkspacePage() {
               </div>
             </article>
 
-            <article className="fm-card">
+            <article id="step-invoice" className="fm-card">
               <h2>STEP 2: 請求を登録 / 入金を反映</h2>
               <p className="fm-step-note">左が新規請求、右が入金反映です。</p>
               <div className="fm-split">
@@ -525,7 +588,7 @@ export default function ProjectWorkspacePage() {
               </div>
             </article>
 
-            <article className="fm-card">
+            <article id="step-payment" className="fm-card">
               <h2>STEP 3: 支払を登録 / 消込</h2>
               <p className="fm-step-note">左から順に、業者支払を登録して消込します。</p>
               <label>
@@ -574,7 +637,7 @@ export default function ProjectWorkspacePage() {
               </p>
             </article>
 
-            <article className="fm-card">
+            <article id="step-docs" className="fm-card">
               <h2>STEP 4: 書類発行 / 連絡</h2>
               <div className="fm-doc-actions fm-doc-actions-stack">
                 <button className="fm-btn" onClick={onExportEstimate} disabled={working}>
