@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { createProject, getCustomers, getProjects, type Project } from "../../lib/api";
+import {
+  createProject,
+  getCustomers,
+  getProjects,
+  isLocalModeEnabled,
+  onLocalModeChanged,
+  type Project,
+} from "../../lib/api";
 
 type Customer = {
   customer_id: string;
@@ -17,6 +24,7 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState("");
+  const [localMode, setLocalMode] = useState(false);
 
   const [customerId, setCustomerId] = useState("C-001");
   const [projectName, setProjectName] = useState("");
@@ -46,6 +54,17 @@ export default function ProjectsPage() {
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const refresh = () => setLocalMode(isLocalModeEnabled());
+    refresh();
+    const unsubscribe = onLocalModeChanged(refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      unsubscribe();
+      window.removeEventListener("focus", refresh);
+    };
   }, []);
 
   const statuses = useMemo(
@@ -78,7 +97,7 @@ export default function ProjectsPage() {
       await load();
       setProjectName("");
       setSiteAddress("");
-      setMessage(`案件を作成しました: ${created.project_id}`);
+      setMessage(`案件を作成しました: ${created.project_id}${isLocalModeEnabled() ? "（ローカル保存）" : ""}`);
       router.push(`/projects/${created.project_id}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "案件作成に失敗しました");
@@ -93,6 +112,7 @@ export default function ProjectsPage() {
         <p className="eyebrow">Project Hub</p>
         <h1>案件管理</h1>
         <p className="sub">案件を作成したら、その案件ページ内で見積・請求・支払・帳票を一気通貫で処理します。</p>
+        {localMode ? <p className="warning">現在はローカルモードです。操作データはこのブラウザ内に保存されます。</p> : null}
       </section>
 
       <section className="workspace-grid">

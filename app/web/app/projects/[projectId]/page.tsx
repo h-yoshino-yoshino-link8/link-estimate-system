@@ -15,6 +15,8 @@ import {
   getPayments,
   getProjectItems,
   getWorkItems,
+  isLocalModeEnabled,
+  onLocalModeChanged,
   updateInvoice,
   updatePayment,
   type Invoice,
@@ -41,6 +43,7 @@ export default function ProjectWorkspacePage() {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState("");
+  const [localMode, setLocalMode] = useState(false);
 
   const [masterItemId, setMasterItemId] = useState("");
   const [itemQuantity, setItemQuantity] = useState("1");
@@ -130,6 +133,17 @@ export default function ProjectWorkspacePage() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
+
+  useEffect(() => {
+    const refresh = () => setLocalMode(isLocalModeEnabled());
+    refresh();
+    const unsubscribe = onLocalModeChanged(refresh);
+    window.addEventListener("focus", refresh);
+    return () => {
+      unsubscribe();
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
 
   const onReload = async () => {
     setWorking(true);
@@ -319,6 +333,7 @@ export default function ProjectWorkspacePage() {
           顧客: {project?.customer_name ?? "-"} | 担当: {project?.owner_name ?? "-"} | ステータス: {project?.project_status ?? "-"}
         </p>
         <p className="sub">この案件画面で、見積明細・請求/入金・支払・帳票出力・メール文面作成まで完結します。</p>
+        {localMode ? <p className="warning">現在はローカルモードです。作業データはこのブラウザ内に保存されます。</p> : null}
         <div className="hero-actions">
           <Link href="/projects" className="link-btn ghost">
             案件一覧へ戻る

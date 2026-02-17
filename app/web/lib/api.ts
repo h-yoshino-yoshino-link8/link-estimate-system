@@ -666,7 +666,6 @@ export async function createProject(payload: {
       return await res.json();
     },
     () => localCreateProject(payload),
-    { allowFallbackOnError: false },
   );
 }
 
@@ -711,7 +710,6 @@ export async function syncExcel(workbookPath?: string) {
       return await res.json();
     },
     () => localSyncExcel(),
-    { allowFallbackOnError: false },
   );
 }
 
@@ -732,7 +730,6 @@ export async function syncExcelUpload(file: File) {
       return await res.json();
     },
     () => localSyncExcel(),
-    { allowFallbackOnError: false },
   );
 }
 
@@ -773,7 +770,6 @@ export async function createProjectItem(
       return (await res.json()) as ProjectItem;
     },
     () => localCreateProjectItem(projectId, payload),
-    { allowFallbackOnError: false },
   );
 }
 
@@ -826,7 +822,6 @@ export async function createInvoice(payload: {
       return (await res.json()) as Invoice;
     },
     () => localCreateInvoice(payload),
-    { allowFallbackOnError: false },
   );
 }
 
@@ -853,7 +848,6 @@ export async function updateInvoice(
       return (await res.json()) as Invoice;
     },
     () => localUpdateInvoice(invoiceId, payload),
-    { allowFallbackOnError: false },
   );
 }
 
@@ -891,7 +885,6 @@ export async function createPayment(payload: {
       return (await res.json()) as Payment;
     },
     () => localCreatePayment(payload),
-    { allowFallbackOnError: false },
   );
 }
 
@@ -918,7 +911,6 @@ export async function updatePayment(
       return (await res.json()) as Payment;
     },
     () => localUpdatePayment(paymentId, payload),
-    { allowFallbackOnError: false },
   );
 }
 
@@ -956,7 +948,6 @@ export async function exportEstimate(projectId: string) {
       return { blob: await res.blob(), disposition: res.headers.get("content-disposition") };
     },
     () => ({ blob: localEstimateBlob(projectId), disposition: null }),
-    { allowFallbackOnError: false },
   );
 }
 
@@ -972,7 +963,6 @@ export async function exportReceipt(invoiceId: string) {
       return { blob: await res.blob(), disposition: res.headers.get("content-disposition") };
     },
     () => ({ blob: localReceiptBlob(invoiceId), disposition: null }),
-    { allowFallbackOnError: false },
   );
 }
 

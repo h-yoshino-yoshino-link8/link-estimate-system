@@ -510,6 +510,17 @@ button:disabled {
   padding: 10px 12px;
 }
 
+.warning {
+  margin: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 208, 128, 0.5);
+  background: rgba(166, 110, 31, 0.28);
+  color: #fff0d3;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 @keyframes rise {
   from {
     opacity: 0;
