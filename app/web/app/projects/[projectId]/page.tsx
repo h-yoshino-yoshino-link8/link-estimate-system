@@ -62,7 +62,6 @@ export default function ProjectWorkspacePage() {
   const [paymentToUpdate, setPaymentToUpdate] = useState("");
   const [paymentPaidToUpdate, setPaymentPaidToUpdate] = useState("0");
   const [invoiceIdForPdf, setInvoiceIdForPdf] = useState("");
-  const [activeTab, setActiveTab] = useState<"basic" | "estimate" | "order" | "invoice" | "docs">("estimate");
 
   const estimateTotal = useMemo(
     () => projectItems.reduce((sum, row) => sum + Number(row.line_total || 0), 0),
@@ -329,10 +328,10 @@ export default function ProjectWorkspacePage() {
 
   return (
     <main className="page">
-      <section className="fm-shell">
+      <section className="fm-shell fm-shell-simple">
         <header className="fm-header">
           <div className="fm-title-wrap">
-            <h1>工事管理画面</h1>
+            <h1>案件ワークスペース</h1>
             <p>
               工事ID: <strong>{projectId}</strong> / 物件名: <strong>{project?.project_name ?? "-"}</strong>
             </p>
@@ -374,66 +373,13 @@ export default function ProjectWorkspacePage() {
           </article>
         </section>
 
-        <nav className="fm-tab-row" aria-label="workspace sections">
-          <button className={`fm-tab ${activeTab === "basic" ? "is-active" : ""}`} onClick={() => setActiveTab("basic")}>
-            工事基本情報
-          </button>
-          <button
-            className={`fm-tab ${activeTab === "estimate" ? "is-active" : ""}`}
-            onClick={() => setActiveTab("estimate")}
-          >
-            見積書 / 原価管理
-          </button>
-          <button className={`fm-tab ${activeTab === "order" ? "is-active" : ""}`} onClick={() => setActiveTab("order")}>
-            発注書 / 支払
-          </button>
-          <button
-            className={`fm-tab ${activeTab === "invoice" ? "is-active" : ""}`}
-            onClick={() => setActiveTab("invoice")}
-          >
-            請求書 / 入金
-          </button>
-          <button className={`fm-tab ${activeTab === "docs" ? "is-active" : ""}`} onClick={() => setActiveTab("docs")}>
-            書類関連
-          </button>
-        </nav>
-
         {localMode ? <p className="warning">ローカルモード: このブラウザ内に保存されます（サーバー未接続）。</p> : null}
 
         <div className="fm-layout">
           <section className="fm-main">
-            <article className={`fm-card ${activeTab === "basic" ? "" : "fm-card-muted"}`}>
-              <h2>工事基本情報</h2>
-              <div className="fm-form-grid">
-                <label>
-                  顧客名
-                  <input value={project?.customer_name ?? ""} disabled />
-                </label>
-                <label>
-                  物件名
-                  <input value={project?.project_name ?? ""} disabled />
-                </label>
-                <label>
-                  施工住所
-                  <input value={project?.site_address ?? ""} disabled />
-                </label>
-                <label>
-                  管理担当
-                  <input value={project?.owner_name ?? ""} disabled />
-                </label>
-                <label>
-                  目標粗利率
-                  <input value={`${((project?.target_margin_rate ?? 0) * 100).toFixed(1)}%`} disabled />
-                </label>
-                <label>
-                  作成日
-                  <input value={project?.created_at ?? ""} disabled />
-                </label>
-              </div>
-            </article>
-
-            <article className={`fm-card ${activeTab === "estimate" ? "" : "fm-card-muted"}`}>
-              <h2>見積明細（原価管理）</h2>
+            <article className="fm-card">
+              <h2>STEP 1: 見積を作る</h2>
+              <p className="fm-step-note">工事項目を選んで「明細追加」を押します。</p>
               <div className="fm-inline-grid">
                 <label>
                   工事項目
@@ -484,63 +430,101 @@ export default function ProjectWorkspacePage() {
                 </table>
               </div>
             </article>
+
+            <article className="fm-card">
+              <h2>STEP 2: 請求を登録 / 入金を反映</h2>
+              <p className="fm-step-note">左が新規請求、右が入金反映です。</p>
+              <div className="fm-split">
+                <div className="fm-subcard">
+                  <label>
+                    請求種別
+                    <input value={invoiceType} onChange={(e) => setInvoiceType(e.target.value)} />
+                  </label>
+                  <label>
+                    請求額
+                    <input value={invoiceAmount} onChange={(e) => setInvoiceAmount(e.target.value)} />
+                  </label>
+                  <label>
+                    請求日
+                    <input type="date" value={invoiceBilledAt} onChange={(e) => setInvoiceBilledAt(e.target.value)} />
+                  </label>
+                  <label>
+                    初回入金額
+                    <input value={invoicePaidAmount} onChange={(e) => setInvoicePaidAmount(e.target.value)} />
+                  </label>
+                  <button className="fm-btn" onClick={onAddInvoice} disabled={working}>
+                    請求を登録
+                  </button>
+                </div>
+                <div className="fm-subcard">
+                  <label>
+                    更新対象請求ID
+                    <select
+                      value={invoiceToUpdate}
+                      onChange={(e) => {
+                        setInvoiceToUpdate(e.target.value);
+                        const matched = invoices.find((x) => x.invoice_id === e.target.value);
+                        if (matched) setInvoicePaidToUpdate(String(matched.paid_amount));
+                      }}
+                      disabled={working || invoices.length === 0}
+                    >
+                      {invoices.length === 0 ? <option value="">請求データなし</option> : null}
+                      {invoices.map((inv) => (
+                        <option key={inv.invoice_id} value={inv.invoice_id}>
+                          {inv.invoice_id} / 残{yen(inv.remaining_amount)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    更新後入金額
+                    <input value={invoicePaidToUpdate} onChange={(e) => setInvoicePaidToUpdate(e.target.value)} />
+                  </label>
+                  <button className="fm-btn" onClick={onSettleInvoice} disabled={working || !invoiceToUpdate}>
+                    入金を反映
+                  </button>
+                  <p className="fm-row-note">
+                    現在選択: {activeInvoice ? `${activeInvoice.invoice_id} / ${activeInvoice.status ?? "-"}` : "-"}
+                  </p>
+                </div>
+              </div>
+            </article>
           </section>
 
           <aside className="fm-side">
-            <article className={`fm-card ${activeTab === "invoice" ? "" : "fm-card-muted"}`}>
-              <h2>請求書</h2>
-              <label>
-                請求種別
-                <input value={invoiceType} onChange={(e) => setInvoiceType(e.target.value)} />
-              </label>
-              <label>
-                請求額
-                <input value={invoiceAmount} onChange={(e) => setInvoiceAmount(e.target.value)} />
-              </label>
-              <label>
-                請求日
-                <input type="date" value={invoiceBilledAt} onChange={(e) => setInvoiceBilledAt(e.target.value)} />
-              </label>
-              <label>
-                入金額
-                <input value={invoicePaidAmount} onChange={(e) => setInvoicePaidAmount(e.target.value)} />
-              </label>
-              <button className="fm-btn" onClick={onAddInvoice} disabled={working}>
-                請求登録
-              </button>
-              <label>
-                更新対象請求ID
-                <select
-                  value={invoiceToUpdate}
-                  onChange={(e) => {
-                    setInvoiceToUpdate(e.target.value);
-                    const matched = invoices.find((x) => x.invoice_id === e.target.value);
-                    if (matched) setInvoicePaidToUpdate(String(matched.paid_amount));
-                  }}
-                  disabled={working || invoices.length === 0}
-                >
-                  {invoices.length === 0 ? <option value="">請求データなし</option> : null}
-                  {invoices.map((inv) => (
-                    <option key={inv.invoice_id} value={inv.invoice_id}>
-                      {inv.invoice_id} / 残{yen(inv.remaining_amount)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                更新後入金額
-                <input value={invoicePaidToUpdate} onChange={(e) => setInvoicePaidToUpdate(e.target.value)} />
-              </label>
-              <button className="fm-btn" onClick={onSettleInvoice} disabled={working || !invoiceToUpdate}>
-                請求更新
-              </button>
-              <p className="fm-row-note">
-                現在選択: {activeInvoice ? `${activeInvoice.invoice_id} / ${activeInvoice.status ?? "-"}` : "-"}
-              </p>
+            <article className="fm-card">
+              <h2>案件情報</h2>
+              <div className="fm-form-grid">
+                <label>
+                  顧客名
+                  <input value={project?.customer_name ?? ""} disabled />
+                </label>
+                <label>
+                  物件名
+                  <input value={project?.project_name ?? ""} disabled />
+                </label>
+                <label>
+                  施工住所
+                  <input value={project?.site_address ?? ""} disabled />
+                </label>
+                <label>
+                  管理担当
+                  <input value={project?.owner_name ?? ""} disabled />
+                </label>
+                <label>
+                  目標粗利率
+                  <input value={`${((project?.target_margin_rate ?? 0) * 100).toFixed(1)}%`} disabled />
+                </label>
+                <label>
+                  作成日
+                  <input value={project?.created_at ?? ""} disabled />
+                </label>
+              </div>
             </article>
 
-            <article className={`fm-card ${activeTab === "order" ? "" : "fm-card-muted"}`}>
-              <h2>発注・支払</h2>
+            <article className="fm-card">
+              <h2>STEP 3: 支払を登録 / 消込</h2>
+              <p className="fm-step-note">左から順に、業者支払を登録して消込します。</p>
               <label>
                 業者名
                 <input value={paymentVendorName} onChange={(e) => setPaymentVendorName(e.target.value)} />
@@ -554,7 +538,7 @@ export default function ProjectWorkspacePage() {
                 <input value={paymentPaidAmount} onChange={(e) => setPaymentPaidAmount(e.target.value)} />
               </label>
               <button className="fm-btn" onClick={onAddPayment} disabled={working}>
-                支払登録
+                支払を登録
               </button>
               <label>
                 更新対象支払ID
@@ -580,24 +564,24 @@ export default function ProjectWorkspacePage() {
                 <input value={paymentPaidToUpdate} onChange={(e) => setPaymentPaidToUpdate(e.target.value)} />
               </label>
               <button className="fm-btn" onClick={onSettlePayment} disabled={working || !paymentToUpdate}>
-                支払更新
+                支払消込を反映
               </button>
               <p className="fm-row-note">
                 現在選択: {activePayment ? `${activePayment.payment_id} / ${activePayment.status ?? "-"}` : "-"}
               </p>
             </article>
 
-            <article className={`fm-card ${activeTab === "docs" ? "" : "fm-card-muted"}`}>
-              <h2>書類関連</h2>
-              <div className="fm-doc-actions">
+            <article className="fm-card">
+              <h2>STEP 4: 書類発行 / 連絡</h2>
+              <div className="fm-doc-actions fm-doc-actions-stack">
                 <button className="fm-btn" onClick={onExportEstimate} disabled={working}>
-                  見積書PDF
+                  見積書PDFを出力
                 </button>
                 <button className="fm-btn" onClick={onExportReceipt} disabled={working || !invoiceIdForPdf}>
-                  領収書PDF
+                  領収書PDFを出力
                 </button>
                 <button className="fm-btn" onClick={onDraftInvoiceMail} disabled={working || invoices.length === 0}>
-                  請求メール
+                  請求メール文面を作成
                 </button>
               </div>
               <label>
