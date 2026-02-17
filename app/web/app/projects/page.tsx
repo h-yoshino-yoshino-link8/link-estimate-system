@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createProject, getCustomers, getProjects, type Project } from "../../lib/api";
 
@@ -10,6 +11,7 @@ type Customer = {
 };
 
 export default function ProjectsPage() {
+  const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,6 +79,7 @@ export default function ProjectsPage() {
       setProjectName("");
       setSiteAddress("");
       setMessage(`案件を作成しました: ${created.project_id}`);
+      router.push(`/projects/${created.project_id}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "案件作成に失敗しました");
     } finally {
@@ -89,7 +92,7 @@ export default function ProjectsPage() {
       <section className="hero">
         <p className="eyebrow">Project Hub</p>
         <h1>案件管理</h1>
-        <p className="sub">案件を作成し、担当者がそのまま見積・請求・支払へ進める入口です。</p>
+        <p className="sub">案件を作成したら、その案件ページ内で見積・請求・支払・帳票を一気通貫で処理します。</p>
       </section>
 
       <section className="workspace-grid">
@@ -170,7 +173,7 @@ export default function ProjectsPage() {
                     <td>{project.created_at}</td>
                     <td>
                       <Link href={`/projects/${project.project_id}`} className="inline-link">
-                        開く
+                        ワークスペースを開く
                       </Link>
                     </td>
                   </tr>

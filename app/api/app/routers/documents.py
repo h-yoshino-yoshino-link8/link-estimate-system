@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Invoice, Project
 from ..schemas import EstimateCoverRequest, ReceiptRequest
+from ..security import require_api_key
 from ..services.pdf import render_estimate_cover_pdf, render_receipt_pdf
 from ..services.sanitize import sanitize_file_name
 
@@ -23,6 +24,7 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 def export_estimate_cover(
     payload: EstimateCoverRequest,
     db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
 ) -> Response:
     project = db.execute(
         select(Project).where(Project.project_id == payload.project_id)
@@ -48,7 +50,11 @@ def export_estimate_cover(
 
 
 @router.post("/receipt")
-def export_receipt(payload: ReceiptRequest, db: Session = Depends(get_db)) -> Response:
+def export_receipt(
+    payload: ReceiptRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
+) -> Response:
     invoice = db.execute(
         select(Invoice).where(Invoice.invoice_id == payload.invoice_id)
     ).scalar_one_or_none()

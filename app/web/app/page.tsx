@@ -115,10 +115,7 @@ export default function ExecutiveDashboardPage() {
         </p>
         <div className="hero-actions">
           <Link href="/projects" className="link-btn">
-            案件一覧へ
-          </Link>
-          <Link href="/finance" className="link-btn ghost">
-            会計センターへ
+            案件一覧を開く
           </Link>
           <button onClick={() => void load()} disabled={loading}>
             最新に更新
@@ -203,9 +200,7 @@ export default function ExecutiveDashboardPage() {
               </p>
             ))}
           </div>
-          <Link href="/finance" className="inline-link">
-            会計センターで対応する
-          </Link>
+          <p className="item-row">対応は「案件管理 → 該当案件」で請求/入金更新を実行してください。</p>
         </article>
       </section>
 

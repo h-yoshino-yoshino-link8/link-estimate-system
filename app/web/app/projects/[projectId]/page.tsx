@@ -10,10 +10,10 @@ import {
   downloadBlob,
   exportEstimate,
   exportReceipt,
+  getProject,
   getInvoices,
   getPayments,
   getProjectItems,
-  getProjects,
   getWorkItems,
   updateInvoice,
   updatePayment,
@@ -48,6 +48,7 @@ export default function ProjectWorkspacePage() {
   const [invoiceAmount, setInvoiceAmount] = useState("100000");
   const [invoicePaidAmount, setInvoicePaidAmount] = useState("0");
   const [invoiceType, setInvoiceType] = useState("一括");
+  const [invoiceBilledAt, setInvoiceBilledAt] = useState(() => new Date().toISOString().slice(0, 10));
 
   const [paymentVendorName, setPaymentVendorName] = useState("テスト業者");
   const [paymentOrderedAmount, setPaymentOrderedAmount] = useState("50000");
@@ -86,15 +87,15 @@ export default function ProjectWorkspacePage() {
   );
 
   const loadWorkspace = async () => {
-    const [projectsResp, workItemsResp, itemsResp, invoicesResp, paymentsResp] = await Promise.all([
-      getProjects(),
+    const [projectResp, workItemsResp, itemsResp, invoicesResp, paymentsResp] = await Promise.all([
+      getProject(projectId),
       getWorkItems(),
       getProjectItems(projectId),
       getInvoices(projectId),
       getPayments(projectId),
     ]);
 
-    setProject(projectsResp.items.find((x) => x.project_id === projectId) ?? null);
+    setProject(projectResp ?? null);
     setWorkItems(workItemsResp);
     setProjectItems(itemsResp);
     setInvoices(invoicesResp);
@@ -108,6 +109,7 @@ export default function ProjectWorkspacePage() {
     setInvoiceToUpdate(firstInvoice?.invoice_id ?? "");
     setInvoicePaidToUpdate(firstInvoice ? String(firstInvoice.paid_amount) : "0");
     setInvoiceIdForPdf(firstInvoice?.invoice_id ?? "");
+    setInvoiceBilledAt(firstInvoice?.billed_at ?? new Date().toISOString().slice(0, 10));
 
     const firstPayment = paymentsResp[0];
     setPaymentToUpdate(firstPayment?.payment_id ?? "");
@@ -168,6 +170,7 @@ export default function ProjectWorkspacePage() {
         invoice_amount: Number(invoiceAmount || "0"),
         paid_amount: Number(invoicePaidAmount || "0"),
         invoice_type: invoiceType,
+        billed_at: invoiceBilledAt,
       });
       await loadWorkspace();
       setInvoiceIdForPdf(created.invoice_id);
@@ -315,6 +318,7 @@ export default function ProjectWorkspacePage() {
         <p className="sub">
           顧客: {project?.customer_name ?? "-"} | 担当: {project?.owner_name ?? "-"} | ステータス: {project?.project_status ?? "-"}
         </p>
+        <p className="sub">この案件画面で、見積明細・請求/入金・支払・帳票出力・メール文面作成まで完結します。</p>
         <div className="hero-actions">
           <Link href="/projects" className="link-btn ghost">
             案件一覧へ戻る
@@ -350,7 +354,7 @@ export default function ProjectWorkspacePage() {
 
       <section className="workspace-grid">
         <article className="panel">
-          <h2>見積明細登録</h2>
+          <h2>01. 見積明細登録</h2>
           <label>
             工事項目
             <select value={masterItemId} onChange={(e) => setMasterItemId(e.target.value)} disabled={working}>
@@ -379,7 +383,7 @@ export default function ProjectWorkspacePage() {
         </article>
 
         <article className="panel">
-          <h2>請求登録・消込</h2>
+          <h2>02. 請求登録・入金更新</h2>
           <label>
             請求種別
             <input value={invoiceType} onChange={(e) => setInvoiceType(e.target.value)} />
@@ -387,6 +391,10 @@ export default function ProjectWorkspacePage() {
           <label>
             請求額
             <input value={invoiceAmount} onChange={(e) => setInvoiceAmount(e.target.value)} />
+          </label>
+          <label>
+            請求日
+            <input type="date" value={invoiceBilledAt} onChange={(e) => setInvoiceBilledAt(e.target.value)} />
           </label>
           <label>
             入金額
@@ -425,7 +433,7 @@ export default function ProjectWorkspacePage() {
         </article>
 
         <article className="panel">
-          <h2>支払登録・消込</h2>
+          <h2>03. 支払登録・消込</h2>
           <label>
             業者名
             <input value={paymentVendorName} onChange={(e) => setPaymentVendorName(e.target.value)} />
@@ -471,7 +479,7 @@ export default function ProjectWorkspacePage() {
         </article>
 
         <article className="panel panel-span-2">
-          <h2>帳票・メール</h2>
+          <h2>04. 帳票・メール</h2>
           <div className="action-row">
             <button onClick={onExportEstimate} disabled={working}>
               見積書PDFを出力

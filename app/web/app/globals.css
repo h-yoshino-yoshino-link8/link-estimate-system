@@ -39,7 +39,7 @@ body {
   padding: 10px 18px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 18px;
 }
 
@@ -73,6 +73,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  margin-left: auto;
 }
 
 .top-nav a {
@@ -88,6 +89,31 @@ body {
 .top-nav a:hover {
   border-color: rgba(201, 231, 212, 0.32);
   background: rgba(201, 231, 212, 0.12);
+}
+
+.runtime-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+.runtime-badge-remote {
+  color: #d8fbe5;
+  border-color: rgba(147, 221, 174, 0.4);
+  background: rgba(71, 150, 104, 0.22);
+}
+
+.runtime-badge-local {
+  color: #fff3cc;
+  border-color: rgba(255, 209, 112, 0.5);
+  background: rgba(152, 101, 24, 0.35);
 }
 
 .app-shell {
@@ -519,6 +545,10 @@ button:disabled {
   .topbar-inner {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .top-nav {
+    margin-left: 0;
   }
 }
 

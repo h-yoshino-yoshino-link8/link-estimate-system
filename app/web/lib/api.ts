@@ -1,7 +1,9 @@
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "").replace(/\/$/, "");
+const API_KEY = (process.env.NEXT_PUBLIC_APP_API_KEY ?? "").trim();
 const FORCE_LOCAL_DATA = process.env.NEXT_PUBLIC_FORCE_LOCAL_DATA === "1";
 const LOCAL_DB_KEY = "link_estimate_local_db_v1";
 const LOCAL_MODE_KEY = "link_estimate_local_mode_enabled";
+const LOCAL_MODE_EVENT = "link_estimate_local_mode_change";
 
 export type WorkItemMaster = {
   id: number;
@@ -216,26 +218,74 @@ function writeLocalDb(db: LocalDb) {
   window.localStorage.setItem(LOCAL_DB_KEY, JSON.stringify(db));
 }
 
+function normalizeNetworkError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (
+    /DNS_HOSTNAME_RESOLVED_PRIVATE|ENOTFOUND|Failed to fetch|NetworkError|fetch failed/i.test(
+      message,
+    )
+  ) {
+    return "APIに接続できません。ネットワークまたはサーバー設定を確認してください。";
+  }
+  return message;
+}
+
+function clearLocalMode() {
+  if (!isBrowser()) return;
+  if (!window.sessionStorage.getItem(LOCAL_MODE_KEY)) return;
+  window.sessionStorage.removeItem(LOCAL_MODE_KEY);
+  window.dispatchEvent(new Event(LOCAL_MODE_EVENT));
+}
+
 function markLocalMode(reason: unknown) {
   if (!isBrowser()) return;
   if (!window.sessionStorage.getItem(LOCAL_MODE_KEY)) {
     window.sessionStorage.setItem(LOCAL_MODE_KEY, "1");
     console.warn("[LinK] API接続に失敗したため、ローカルデータモードへ切替", reason);
+    window.dispatchEvent(new Event(LOCAL_MODE_EVENT));
   }
 }
 
-async function withFallback<T>(remote: () => Promise<T>, fallback: () => T | Promise<T>) {
+function apiFetch(input: string, init?: RequestInit) {
+  const headers = new Headers(init?.headers ?? undefined);
+  if (API_KEY) headers.set("X-API-Key", API_KEY);
+  return fetch(input, { ...init, headers });
+}
+
+type FallbackOption = {
+  allowFallbackOnError?: boolean;
+};
+
+async function withFallback<T>(
+  remote: () => Promise<T>,
+  fallback: () => T | Promise<T>,
+  option?: FallbackOption,
+) {
   if (FORCE_LOCAL_DATA) {
     markLocalMode("FORCE_LOCAL_DATA");
     return await fallback();
   }
   try {
-    return await remote();
+    const result = await remote();
+    clearLocalMode();
+    return result;
   } catch (error) {
-    if (!isBrowser()) throw error;
+    const allowFallbackOnError = option?.allowFallbackOnError !== false;
+    if (!isBrowser() || !allowFallbackOnError) throw new Error(normalizeNetworkError(error));
     markLocalMode(error);
     return await fallback();
   }
+}
+
+export function isLocalModeEnabled() {
+  if (!isBrowser()) return FORCE_LOCAL_DATA;
+  return FORCE_LOCAL_DATA || window.sessionStorage.getItem(LOCAL_MODE_KEY) === "1";
+}
+
+export function onLocalModeChanged(callback: () => void) {
+  if (!isBrowser()) return () => undefined;
+  window.addEventListener(LOCAL_MODE_EVENT, callback);
+  return () => window.removeEventListener(LOCAL_MODE_EVENT, callback);
 }
 
 function localGetCustomers() {
@@ -278,6 +328,12 @@ function localGetProjects(params?: { customer_id?: string; status?: string }): P
   if (params?.customer_id) items = items.filter((x) => x.customer_id === params.customer_id);
   if (params?.status) items = items.filter((x) => x.project_status === params.status);
   return { items, total: items.length };
+}
+
+function localGetProject(projectId: string): Project {
+  const row = readLocalDb().projects.find((x) => x.project_id === projectId);
+  if (!row) throw new Error("案件が存在しません");
+  return row;
 }
 
 function localSyncExcel() {
@@ -344,6 +400,7 @@ function localCreateInvoice(payload: {
   project_id: string;
   invoice_amount: number;
   invoice_type?: string;
+  billed_at?: string;
   paid_amount?: number;
   status?: string;
   note?: string;
@@ -359,7 +416,7 @@ function localCreateInvoice(payload: {
     project_id: payload.project_id,
     invoice_amount: amount,
     invoice_type: payload.invoice_type ?? "一括",
-    billed_at: ymd(),
+    billed_at: payload.billed_at ?? ymd(),
     paid_amount: paid,
     remaining_amount: remaining,
     status: payload.status ?? deriveInvoiceStatus(amount, paid),
@@ -580,7 +637,7 @@ function localReceiptBlob(invoiceId: string) {
 export async function getCustomers() {
   return withFallback(
     async () => {
-      const res = await fetch(`${API_BASE}/api/v1/customers`, { cache: "no-store" });
+      const res = await apiFetch(`${API_BASE}/api/v1/customers`, { cache: "no-store" });
       if (!res.ok) throw new Error("顧客一覧の取得に失敗しました");
       return await res.json();
     },
@@ -597,7 +654,7 @@ export async function createProject(payload: {
 }) {
   return withFallback(
     async () => {
-      const res = await fetch(`${API_BASE}/api/v1/projects`, {
+      const res = await apiFetch(`${API_BASE}/api/v1/projects`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -609,6 +666,7 @@ export async function createProject(payload: {
       return await res.json();
     },
     () => localCreateProject(payload),
+    { allowFallbackOnError: false },
   );
 }
 
@@ -619,7 +677,7 @@ export async function getProjects(params?: { customer_id?: string; status?: stri
       if (params?.customer_id) search.set("customer_id", params.customer_id);
       if (params?.status) search.set("status", params.status);
       const qs = search.toString();
-      const res = await fetch(`${API_BASE}/api/v1/projects${qs ? `?${qs}` : ""}`, { cache: "no-store" });
+      const res = await apiFetch(`${API_BASE}/api/v1/projects${qs ? `?${qs}` : ""}`, { cache: "no-store" });
       if (!res.ok) throw new Error("案件一覧の取得に失敗しました");
       return (await res.json()) as ProjectListResponse;
     },
@@ -627,10 +685,21 @@ export async function getProjects(params?: { customer_id?: string; status?: stri
   );
 }
 
+export async function getProject(projectId: string) {
+  return withFallback(
+    async () => {
+      const res = await apiFetch(`${API_BASE}/api/v1/projects/${encodeURIComponent(projectId)}`, { cache: "no-store" });
+      if (!res.ok) throw new Error("案件詳細の取得に失敗しました");
+      return (await res.json()) as Project;
+    },
+    () => localGetProject(projectId),
+  );
+}
+
 export async function syncExcel(workbookPath?: string) {
   return withFallback(
     async () => {
-      const res = await fetch(`${API_BASE}/api/v1/sync/excel`, {
+      const res = await apiFetch(`${API_BASE}/api/v1/sync/excel`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ workbook_path: workbookPath || null }),
@@ -642,6 +711,7 @@ export async function syncExcel(workbookPath?: string) {
       return await res.json();
     },
     () => localSyncExcel(),
+    { allowFallbackOnError: false },
   );
 }
 
@@ -651,7 +721,7 @@ export async function syncExcelUpload(file: File) {
       const form = new FormData();
       form.append("file", file);
 
-      const res = await fetch(`${API_BASE}/api/v1/sync/excel/upload`, {
+      const res = await apiFetch(`${API_BASE}/api/v1/sync/excel/upload`, {
         method: "POST",
         body: form,
       });
@@ -662,13 +732,14 @@ export async function syncExcelUpload(file: File) {
       return await res.json();
     },
     () => localSyncExcel(),
+    { allowFallbackOnError: false },
   );
 }
 
 export async function getWorkItems() {
   return withFallback(
     async () => {
-      const res = await fetch(`${API_BASE}/api/v1/work-items`, { cache: "no-store" });
+      const res = await apiFetch(`${API_BASE}/api/v1/work-items`, { cache: "no-store" });
       if (!res.ok) throw new Error("工事項目の取得に失敗しました");
       return (await res.json()) as WorkItemMaster[];
     },
@@ -690,7 +761,7 @@ export async function createProjectItem(
 ) {
   return withFallback(
     async () => {
-      const res = await fetch(`${API_BASE}/api/v1/projects/${projectId}/items`, {
+      const res = await apiFetch(`${API_BASE}/api/v1/projects/${projectId}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -702,13 +773,14 @@ export async function createProjectItem(
       return (await res.json()) as ProjectItem;
     },
     () => localCreateProjectItem(projectId, payload),
+    { allowFallbackOnError: false },
   );
 }
 
 export async function getProjectItems(projectId: string) {
   return withFallback(
     async () => {
-      const res = await fetch(`${API_BASE}/api/v1/projects/${projectId}/items`, { cache: "no-store" });
+      const res = await apiFetch(`${API_BASE}/api/v1/projects/${projectId}/items`, { cache: "no-store" });
       if (!res.ok) {
         const body = await res.text();
         throw new Error(`明細一覧取得に失敗しました: ${body}`);
@@ -723,7 +795,7 @@ export async function getInvoices(projectId?: string) {
   return withFallback(
     async () => {
       const search = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
-      const res = await fetch(`${API_BASE}/api/v1/invoices${search}`, { cache: "no-store" });
+      const res = await apiFetch(`${API_BASE}/api/v1/invoices${search}`, { cache: "no-store" });
       if (!res.ok) throw new Error("請求一覧取得に失敗しました");
       return (await res.json()) as Invoice[];
     },
@@ -735,13 +807,14 @@ export async function createInvoice(payload: {
   project_id: string;
   invoice_amount: number;
   invoice_type?: string;
+  billed_at?: string;
   paid_amount?: number;
   status?: string;
   note?: string;
 }) {
   return withFallback(
     async () => {
-      const res = await fetch(`${API_BASE}/api/v1/invoices`, {
+      const res = await apiFetch(`${API_BASE}/api/v1/invoices`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -753,6 +826,7 @@ export async function createInvoice(payload: {
       return (await res.json()) as Invoice;
     },
     () => localCreateInvoice(payload),
+    { allowFallbackOnError: false },
   );
 }
 
@@ -767,7 +841,7 @@ export async function updateInvoice(
 ) {
   return withFallback(
     async () => {
-      const res = await fetch(`${API_BASE}/api/v1/invoices/${encodeURIComponent(invoiceId)}`, {
+      const res = await apiFetch(`${API_BASE}/api/v1/invoices/${encodeURIComponent(invoiceId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -779,6 +853,7 @@ export async function updateInvoice(
       return (await res.json()) as Invoice;
     },
     () => localUpdateInvoice(invoiceId, payload),
+    { allowFallbackOnError: false },
   );
 }
 
@@ -786,7 +861,7 @@ export async function getPayments(projectId?: string) {
   return withFallback(
     async () => {
       const search = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
-      const res = await fetch(`${API_BASE}/api/v1/payments${search}`, { cache: "no-store" });
+      const res = await apiFetch(`${API_BASE}/api/v1/payments${search}`, { cache: "no-store" });
       if (!res.ok) throw new Error("支払一覧取得に失敗しました");
       return (await res.json()) as Payment[];
     },
@@ -804,7 +879,7 @@ export async function createPayment(payload: {
 }) {
   return withFallback(
     async () => {
-      const res = await fetch(`${API_BASE}/api/v1/payments`, {
+      const res = await apiFetch(`${API_BASE}/api/v1/payments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -816,6 +891,7 @@ export async function createPayment(payload: {
       return (await res.json()) as Payment;
     },
     () => localCreatePayment(payload),
+    { allowFallbackOnError: false },
   );
 }
 
@@ -830,7 +906,7 @@ export async function updatePayment(
 ) {
   return withFallback(
     async () => {
-      const res = await fetch(`${API_BASE}/api/v1/payments/${encodeURIComponent(paymentId)}`, {
+      const res = await apiFetch(`${API_BASE}/api/v1/payments/${encodeURIComponent(paymentId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -842,13 +918,14 @@ export async function updatePayment(
       return (await res.json()) as Payment;
     },
     () => localUpdatePayment(paymentId, payload),
+    { allowFallbackOnError: false },
   );
 }
 
 export async function getDashboardSummary() {
   return withFallback(
     async () => {
-      const res = await fetch(`${API_BASE}/api/v1/dashboard/summary`, { cache: "no-store" });
+      const res = await apiFetch(`${API_BASE}/api/v1/dashboard/summary`, { cache: "no-store" });
       if (!res.ok) throw new Error("ダッシュボード集計取得に失敗しました");
       return (await res.json()) as DashboardSummary;
     },
@@ -859,7 +936,7 @@ export async function getDashboardSummary() {
 export async function getDashboardOverview() {
   return withFallback(
     async () => {
-      const res = await fetch(`${API_BASE}/api/v1/dashboard/overview`, { cache: "no-store" });
+      const res = await apiFetch(`${API_BASE}/api/v1/dashboard/overview`, { cache: "no-store" });
       if (!res.ok) throw new Error("ダッシュボード概要取得に失敗しました");
       return (await res.json()) as DashboardOverview;
     },
@@ -870,7 +947,7 @@ export async function getDashboardOverview() {
 export async function exportEstimate(projectId: string) {
   return withFallback(
     async () => {
-      const res = await fetch(`${API_BASE}/api/v1/documents/estimate-cover`, {
+      const res = await apiFetch(`${API_BASE}/api/v1/documents/estimate-cover`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ project_id: projectId }),
@@ -879,13 +956,14 @@ export async function exportEstimate(projectId: string) {
       return { blob: await res.blob(), disposition: res.headers.get("content-disposition") };
     },
     () => ({ blob: localEstimateBlob(projectId), disposition: null }),
+    { allowFallbackOnError: false },
   );
 }
 
 export async function exportReceipt(invoiceId: string) {
   return withFallback(
     async () => {
-      const res = await fetch(`${API_BASE}/api/v1/documents/receipt`, {
+      const res = await apiFetch(`${API_BASE}/api/v1/documents/receipt`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ invoice_id: invoiceId }),
@@ -894,6 +972,7 @@ export async function exportReceipt(invoiceId: string) {
       return { blob: await res.blob(), disposition: res.headers.get("content-disposition") };
     },
     () => ({ blob: localReceiptBlob(invoiceId), disposition: null }),
+    { allowFallbackOnError: false },
   );
 }
 

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Project, ProjectItem, WorkItemMaster
 from ..schemas import ProjectItemCreate, ProjectItemRead, WorkItemMasterRead
+from ..security import require_api_key
 
 router = APIRouter(tags=["work-items"])
 
@@ -77,6 +78,7 @@ def create_project_item(
     project_id: str,
     payload: ProjectItemCreate,
     db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
 ) -> ProjectItemRead:
     project = db.execute(select(Project).where(Project.project_id == project_id)).scalar_one_or_none()
     if project is None:

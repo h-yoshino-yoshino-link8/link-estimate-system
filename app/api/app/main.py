@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -10,7 +12,19 @@ from .database import Base, SessionLocal, engine
 from .routers import customers, dashboard, documents, finance, projects, sync, work_items
 from .seed import seed_data
 
-app = FastAPI(title="Link Estimate System API", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        seed_data(db)
+    finally:
+        db.close()
+    yield
+
+
+app = FastAPI(title="Link Estimate System API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,17 +33,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def startup() -> None:
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
-    try:
-        seed_data(db)
-    finally:
-        db.close()
-
 
 @app.get("/health")
 def health() -> dict[str, str]:

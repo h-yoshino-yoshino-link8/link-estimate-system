@@ -1,6 +1,7 @@
 import Link from "next/link";
 import "./globals.css";
 import type { Metadata } from "next";
+import RuntimeModeIndicator from "../components/runtime-mode-indicator";
 
 export const metadata: Metadata = {
   title: "LinK Estimate OS",
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/">経営ダッシュボード</Link>
               <Link href="/projects">案件管理</Link>
             </nav>
+            <RuntimeModeIndicator />
           </div>
         </header>
         <div className="app-shell">{children}</div>

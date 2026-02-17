@@ -11,6 +11,8 @@ from openpyxl import Workbook
 
 TMP_DIR = Path(tempfile.mkdtemp(prefix="link-estimate-api-test-"))
 os.environ["APP_DATABASE_URL"] = f"sqlite:///{(TMP_DIR / 'test.db').as_posix()}"
+os.environ["APP_ALLOW_CUSTOM_WORKBOOK_PATH"] = "1"
+os.environ["APP_WORKBOOK_BASE_DIR"] = TMP_DIR.as_posix()
 
 from app.main import app  # noqa: E402
 
@@ -91,6 +93,11 @@ def test_create_project_and_list() -> None:
         assert create_resp.status_code == 201
         created = create_resp.json()
         assert created["project_id"].startswith("P-")
+
+        detail_resp = client.get(f"/api/v1/projects/{created['project_id']}")
+        assert detail_resp.status_code == 200
+        detail_body = detail_resp.json()
+        assert detail_body["project_id"] == created["project_id"]
 
         list_resp = client.get("/api/v1/projects")
         assert list_resp.status_code == 200
@@ -238,6 +245,26 @@ def test_invoice_and_payment_endpoints() -> None:
         patched_payment = payment_patch.json()
         assert patched_payment["remaining_amount"] == 0
         assert patched_payment["status"] == "✅支払済"
+
+        invalid_invoice = client.post(
+            "/api/v1/invoices",
+            json={
+                "project_id": "P-003",
+                "invoice_amount": 1000,
+                "paid_amount": 1500,
+            },
+        )
+        assert invalid_invoice.status_code == 422
+
+        invalid_payment = client.post(
+            "/api/v1/payments",
+            json={
+                "project_id": "P-003",
+                "ordered_amount": 1000,
+                "paid_amount": 1500,
+            },
+        )
+        assert invalid_payment.status_code == 422
 
 
 def test_dashboard_summary() -> None:

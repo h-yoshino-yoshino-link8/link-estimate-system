@@ -19,6 +19,7 @@ from ..schemas import (
     PaymentRead,
     PaymentUpdate,
 )
+from ..security import require_api_key
 from ..services.id_generator import get_next_invoice_id, get_next_payment_id
 
 router = APIRouter(tags=["finance"])
@@ -79,22 +80,31 @@ def _payment_to_read(row: Payment) -> PaymentRead:
 @router.get("/invoices", response_model=list[InvoiceRead])
 def list_invoices(
     project_id: Optional[str] = Query(default=None),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
     db: Session = Depends(get_db),
 ) -> list[InvoiceRead]:
     stmt = select(Invoice)
     if project_id:
         stmt = stmt.where(Invoice.project_id == project_id)
-    stmt = stmt.order_by(Invoice.invoice_id.asc())
+    stmt = stmt.order_by(Invoice.invoice_id.asc()).offset(offset).limit(limit)
 
     rows = db.execute(stmt).scalars().all()
     return [_invoice_to_read(row) for row in rows]
 
 
 @router.post("/invoices", response_model=InvoiceRead, status_code=status.HTTP_201_CREATED)
-def create_invoice(payload: InvoiceCreate, db: Session = Depends(get_db)) -> InvoiceRead:
+def create_invoice(
+    payload: InvoiceCreate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
+) -> InvoiceRead:
     project = db.execute(select(Project).where(Project.project_id == payload.project_id)).scalar_one_or_none()
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    if payload.paid_amount > payload.invoice_amount:
+        raise HTTPException(status_code=422, detail="paid_amount cannot exceed invoice_amount")
 
     invoice_id = (payload.invoice_id or "").strip() or get_next_invoice_id(db)
 
@@ -123,10 +133,20 @@ def create_invoice(payload: InvoiceCreate, db: Session = Depends(get_db)) -> Inv
 
 
 @router.patch("/invoices/{invoice_id}", response_model=InvoiceRead)
-def update_invoice(invoice_id: str, payload: InvoiceUpdate, db: Session = Depends(get_db)) -> InvoiceRead:
+def update_invoice(
+    invoice_id: str,
+    payload: InvoiceUpdate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
+) -> InvoiceRead:
     invoice = db.execute(select(Invoice).where(Invoice.invoice_id == invoice_id)).scalar_one_or_none()
     if invoice is None:
         raise HTTPException(status_code=404, detail="Invoice not found")
+
+    next_invoice_amount = payload.invoice_amount if payload.invoice_amount is not None else invoice.invoice_amount
+    next_paid_amount = payload.paid_amount if payload.paid_amount is not None else invoice.paid_amount
+    if next_paid_amount > next_invoice_amount:
+        raise HTTPException(status_code=422, detail="paid_amount cannot exceed invoice_amount")
 
     if payload.invoice_amount is not None:
         invoice.invoice_amount = payload.invoice_amount
@@ -148,22 +168,31 @@ def update_invoice(invoice_id: str, payload: InvoiceUpdate, db: Session = Depend
 @router.get("/payments", response_model=list[PaymentRead])
 def list_payments(
     project_id: Optional[str] = Query(default=None),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=500),
     db: Session = Depends(get_db),
 ) -> list[PaymentRead]:
     stmt = select(Payment)
     if project_id:
         stmt = stmt.where(Payment.project_id == project_id)
-    stmt = stmt.order_by(Payment.payment_id.asc())
+    stmt = stmt.order_by(Payment.payment_id.asc()).offset(offset).limit(limit)
 
     rows = db.execute(stmt).scalars().all()
     return [_payment_to_read(row) for row in rows]
 
 
 @router.post("/payments", response_model=PaymentRead, status_code=status.HTTP_201_CREATED)
-def create_payment(payload: PaymentCreate, db: Session = Depends(get_db)) -> PaymentRead:
+def create_payment(
+    payload: PaymentCreate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
+) -> PaymentRead:
     project = db.execute(select(Project).where(Project.project_id == payload.project_id)).scalar_one_or_none()
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    if payload.paid_amount > payload.ordered_amount:
+        raise HTTPException(status_code=422, detail="paid_amount cannot exceed ordered_amount")
 
     payment_id = (payload.payment_id or "").strip() or get_next_payment_id(db)
 
@@ -194,10 +223,20 @@ def create_payment(payload: PaymentCreate, db: Session = Depends(get_db)) -> Pay
 
 
 @router.patch("/payments/{payment_id}", response_model=PaymentRead)
-def update_payment(payment_id: str, payload: PaymentUpdate, db: Session = Depends(get_db)) -> PaymentRead:
+def update_payment(
+    payment_id: str,
+    payload: PaymentUpdate,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_api_key),
+) -> PaymentRead:
     payment = db.execute(select(Payment).where(Payment.payment_id == payment_id)).scalar_one_or_none()
     if payment is None:
         raise HTTPException(status_code=404, detail="Payment not found")
+
+    next_ordered_amount = payload.ordered_amount if payload.ordered_amount is not None else payment.ordered_amount
+    next_paid_amount = payload.paid_amount if payload.paid_amount is not None else payment.paid_amount
+    if next_paid_amount > next_ordered_amount:
+        raise HTTPException(status_code=422, detail="paid_amount cannot exceed ordered_amount")
 
     if payload.ordered_amount is not None:
         payment.ordered_amount = payload.ordered_amount
