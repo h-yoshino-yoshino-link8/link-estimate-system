@@ -13,3 +13,10 @@
 - Production URL: https://web-9qr34kyg0-h-yoshino-link-8jps-projects.vercel.app
 - Access check: `HTTP 200`
 - Note: Team-level SSO protection was set to `null` for this project via Vercel API, so the URL is now externally viewable.
+
+## Vercel Deploy (2026-02-17 22:24:12 JST)
+- Project: `h-yoshino-link-8jps-projects/web`
+- Commit: `6e3163e`
+- Production URL: https://web-b0kl54jbf-h-yoshino-link-8jps-projects.vercel.app
+- Access check: `HTTP 200`
+- Change: Restored local-mode write flow for project/estimate/cost operations and added explicit in-screen local-mode warnings.
