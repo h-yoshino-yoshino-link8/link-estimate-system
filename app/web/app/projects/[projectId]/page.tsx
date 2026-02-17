@@ -98,6 +98,42 @@ export default function ProjectWorkspacePage() {
   const stepInvoiceDone = invoices.length > 0;
   const stepInvoiceSettled = invoices.length > 0 && invoiceRemaining <= 0;
   const stepPaymentDone = payments.length > 0;
+  const timelineEvents = useMemo(() => {
+    const rows: Array<{ ts: number; date: string; type: string; label: string }> = [];
+    const projectDate = project?.created_at ?? "";
+
+    projectItems.forEach((item) => {
+      const date = projectDate;
+      rows.push({
+        ts: Number.isFinite(new Date(date).getTime()) ? new Date(date).getTime() : 0,
+        date,
+        type: "見積",
+        label: `${item.category} / ${item.item_name} / ${item.quantity}${item.unit ?? ""}`,
+      });
+    });
+
+    invoices.forEach((inv) => {
+      const date = inv.billed_at ?? projectDate;
+      rows.push({
+        ts: Number.isFinite(new Date(date).getTime()) ? new Date(date).getTime() : 0,
+        date,
+        type: "請求",
+        label: `${inv.invoice_id} / ${yen(inv.invoice_amount)} / 残 ${yen(inv.remaining_amount)}`,
+      });
+    });
+
+    payments.forEach((pay) => {
+      const date = pay.paid_at ?? projectDate;
+      rows.push({
+        ts: Number.isFinite(new Date(date).getTime()) ? new Date(date).getTime() : 0,
+        date,
+        type: "支払",
+        label: `${pay.payment_id} / ${yen(pay.ordered_amount)} / 残 ${yen(pay.remaining_amount)}`,
+      });
+    });
+
+    return rows.sort((a, b) => b.ts - a.ts).slice(0, 20);
+  }, [project?.created_at, projectItems, invoices, payments]);
 
   const nextAction = useMemo(() => {
     if (!stepEstimateDone) {
@@ -441,8 +477,8 @@ export default function ProjectWorkspacePage() {
           </div>
         </section>
 
-        <div className="fm-layout">
-          <section className="fm-main">
+        <div className="fm-cockpit">
+          <section className="fm-column">
             <article id="step-estimate" className="fm-card">
               <h2>STEP 1: 見積を作る</h2>
               <p className="fm-step-note">工事項目を選んで「明細追加」を押します。</p>
@@ -497,6 +533,38 @@ export default function ProjectWorkspacePage() {
               </div>
             </article>
 
+            <article className="fm-card">
+              <h2>案件情報</h2>
+              <div className="fm-form-grid">
+                <label>
+                  顧客名
+                  <input value={project?.customer_name ?? ""} disabled />
+                </label>
+                <label>
+                  物件名
+                  <input value={project?.project_name ?? ""} disabled />
+                </label>
+                <label>
+                  施工住所
+                  <input value={project?.site_address ?? ""} disabled />
+                </label>
+                <label>
+                  管理担当
+                  <input value={project?.owner_name ?? ""} disabled />
+                </label>
+                <label>
+                  目標粗利率
+                  <input value={`${((project?.target_margin_rate ?? 0) * 100).toFixed(1)}%`} disabled />
+                </label>
+                <label>
+                  作成日
+                  <input value={project?.created_at ?? ""} disabled />
+                </label>
+              </div>
+            </article>
+          </section>
+
+          <section className="fm-column">
             <article id="step-invoice" className="fm-card">
               <h2>STEP 2: 請求を登録 / 入金を反映</h2>
               <p className="fm-step-note">左が新規請求、右が入金反映です。</p>
@@ -555,39 +623,55 @@ export default function ProjectWorkspacePage() {
                 </div>
               </div>
             </article>
-          </section>
 
-          <aside className="fm-side">
             <article className="fm-card">
-              <h2>案件情報</h2>
-              <div className="fm-form-grid">
-                <label>
-                  顧客名
-                  <input value={project?.customer_name ?? ""} disabled />
-                </label>
-                <label>
-                  物件名
-                  <input value={project?.project_name ?? ""} disabled />
-                </label>
-                <label>
-                  施工住所
-                  <input value={project?.site_address ?? ""} disabled />
-                </label>
-                <label>
-                  管理担当
-                  <input value={project?.owner_name ?? ""} disabled />
-                </label>
-                <label>
-                  目標粗利率
-                  <input value={`${((project?.target_margin_rate ?? 0) * 100).toFixed(1)}%`} disabled />
-                </label>
-                <label>
-                  作成日
-                  <input value={project?.created_at ?? ""} disabled />
-                </label>
+              <h2>請求 / 入金サマリー</h2>
+              <div className="fm-mini-metrics">
+                <article className="fm-mini-card">
+                  <span>請求件数</span>
+                  <strong>{invoices.length} 件</strong>
+                </article>
+                <article className="fm-mini-card">
+                  <span>未回収</span>
+                  <strong>{yen(invoiceRemaining)}</strong>
+                </article>
+                <article className="fm-mini-card">
+                  <span>入金済</span>
+                  <strong>{yen(settledSales)}</strong>
+                </article>
+              </div>
+
+              <div className="table-wrap">
+                <table className="table fm-table-dense">
+                  <thead>
+                    <tr>
+                      <th>請求ID</th>
+                      <th>請求額</th>
+                      <th>残額</th>
+                      <th>状態</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoices.length === 0 ? (
+                      <tr>
+                        <td colSpan={4}>請求データはまだありません。</td>
+                      </tr>
+                    ) : null}
+                    {invoices.map((inv) => (
+                      <tr key={inv.invoice_id}>
+                        <td>{inv.invoice_id}</td>
+                        <td>{yen(inv.invoice_amount)}</td>
+                        <td>{yen(inv.remaining_amount)}</td>
+                        <td>{inv.status ?? "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </article>
+          </section>
 
+          <aside className="fm-column">
             <article id="step-payment" className="fm-card">
               <h2>STEP 3: 支払を登録 / 消込</h2>
               <p className="fm-step-note">左から順に、業者支払を登録して消込します。</p>
@@ -691,6 +775,26 @@ export default function ProjectWorkspacePage() {
                   </tbody>
                 </table>
               </div>
+            </article>
+
+            <article className="fm-card">
+              <h2>進捗タイムライン</h2>
+              <ul className="fm-timeline">
+                {timelineEvents.length === 0 ? (
+                  <li>
+                    <strong>履歴なし</strong>
+                    <p className="fm-row-note">見積・請求・支払の操作を行うとここに反映されます。</p>
+                  </li>
+                ) : null}
+                {timelineEvents.map((row, index) => (
+                  <li key={`${row.type}-${row.label}-${index}`}>
+                    <strong>
+                      {row.type} / {row.date || "-"}
+                    </strong>
+                    <p className="fm-row-note">{row.label}</p>
+                  </li>
+                ))}
+              </ul>
             </article>
           </aside>
         </div>
