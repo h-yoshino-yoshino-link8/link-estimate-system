@@ -18,6 +18,7 @@
 - 参照:
   - Autodesk: https://www.autodesk.com/design-make/articles/report-construction-disconnected-data
   - McKinsey (E&C): https://www.mckinsey.com/industries/engineering-construction-and-building-materials/our-insights/the-next-normal-in-construction-how-disruption-is-reshaping-the-worlds-largest-ecosystem
+  - KPMG Global Construction Survey: https://kpmg.com/xx/en/our-insights/gms/the-fluid-state-of-construction-and-infrastructure.html
 
 ### F2. 「次に何をすべきか」が画面に出ない
 - 公的UXガイドラインでは、ユーザーニーズ起点・最小手順・明確な次アクションが必須。
@@ -46,6 +47,19 @@
   - G2 Procore Reviews: https://www.g2.com/products/procore/reviews
   - Capterra Buildertrend Reviews: https://www.capterra.com/p/129167/Buildertrend/reviews/
 
+### F6. 見積精度不足が利益毀損を拡大させる
+- 見積時点の抜け漏れ・変更管理不全は、工期遅延と利益率低下に直結しやすい。
+- 結果: 後工程（請求/回収）での修正コスト増、顧客不信増。
+- 参照:
+  - World Bank（Construction productivity context）: https://www.worldbank.org/en/topic/infrastructure/publication/the-global-infrastructure-productivity-gap
+  - 建設コスト超過研究（参照ハブ）: https://www.researchgate.net/publication/251238513_What_Causes_Cost_Overrun_in_Construction_Projects
+
+## 3.1 地域別に見える共通懸念
+- 北米: 契約・請求・消費者保護の観点で、見積根拠・変更履歴の不足が紛争化しやすい。
+- 欧州: 生産性・デジタル化の観点で、分断データ/手作業連携の限界が課題。
+- APAC: 工期遅延/コスト超過への感度が高く、見積→実行→請求の連動性が重視される。
+- 共通項: 「多機能」より「業務完了まで迷わない導線」の方が定着に効く。
+
 ## 4. 吉野さん要件との照合
 - 要件: 「1案件中心で、見積→請求→入金→支払→帳票→連絡が連動」
 - 評価: 妥当。業務導線として正しい。
@@ -65,3 +79,8 @@
 - 案件作成ボタン文言を保存意図が分かる形へ変更
 - 案件ワークスペースに「次にやること」バナーとステップ進捗を追加
 
+## 7. 追加の改善提案（次スプリント）
+1. 案件コックピットを3列固定にし、請求/支払の操作対象IDを常に見える位置へ固定。
+2. 帳票を「プレビュー」「出力」「履歴」の3機能に分離して、失敗時は再生成ボタンを明示。
+3. 変更履歴（誰が、いつ、どの金額を変更）を案件単位で表示。
+4. 「見積差額警告」（目標粗利率を下回った時）を即時表示。
