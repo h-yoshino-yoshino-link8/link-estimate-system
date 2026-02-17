@@ -6,3 +6,10 @@
 - api health: SKIP (URL not set)
 - web health: SKIP (URL not set)
 
+
+## Vercel Deploy (2026-02-17 22:19:04 JST)
+- Project: `h-yoshino-link-8jps-projects/web`
+- Commit: `d8dadea`
+- Production URL: https://web-9qr34kyg0-h-yoshino-link-8jps-projects.vercel.app
+- Access check: `HTTP 200`
+- Note: Team-level SSO protection was set to `null` for this project via Vercel API, so the URL is now externally viewable.
