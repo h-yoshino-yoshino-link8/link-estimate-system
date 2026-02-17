@@ -1,53 +1,80 @@
 # 見積原価管理システム - 株式会社LinK
 
-LinK工務店レスキューの見積・原価管理Excelシステム。
+LinK工務店レスキュー向けの見積・原価管理Excelシステムです。
 
 ## 概要
 
-賃貸管理会社からの原状回復・リフォーム・リノベーション工事の見積作成、原価管理、案件管理を一元化するExcelベースのシステム。
+賃貸管理会社からの原状回復・リフォーム・リノベーション工事に対して、見積作成・原価管理・案件管理・請求/支払管理を一元化します。
 
 ## リポジトリ構成
 
-```
+```text
 link-estimate-system/
-├── README.md                       # このファイル
+├── README.md
 ├── docs/
-│   ├── 現状分析_20260211.md        # システム全体の現状分析
-│   ├── 設計方針_v4.md              # 今後の設計・実装方針
-│   └── シート仕様書.md             # 全42シートの仕様
-└── excel/
-    └── 見積原価管理システム.xlsx     # メインシステムファイル
+│   ├── BUILD_RUNBOOK_20260217.md     # 構築・検証手順
+│   ├── 現状分析_20260211.md
+│   ├── 設計方針_v4.md
+│   └── シート仕様書.md
+├── excel/
+│   ├── 見積原価管理システム.xlsx      # ソースブック
+│   └── 見積原価管理システム.xlsm      # ビルド成果物（macro-enabled）
+├── scripts/
+│   ├── build_workbook.py             # xlsm生成 + S表紙INDIRECT化
+│   └── validate_workbook.py          # 構造/数式/列定義の検証
+└── vba/
+    └── Module_NewProject.bas         # 新規案件作成 + PDF出力マクロ
 ```
 
-## システム構成（42シート）
+## ビルド手順
 
-### コアシステム（新）
-- **操作パネル** - 操作ガイド・案件作成手順
-- **ダッシュボード** - KPI・ステータス分布・請求入金管理
-- **案件管理** - CRMパイプライン（30列、7ステージ）
-- **案件テンプレート** - 原価計算（A/B/C 3タイプ）
-- **工事項目DB** - 工事項目マスタ（46件）
-- **業者DB** - 協力会社マスタ（5社/10枠）
-- **顧客マスタ** - 顧客情報（2件）
-- **発注書兼請求書** - 帳票出力
-- **工程表** - ガントチャート
-- **Ｓ表紙** - 見積表紙（カテゴリ別合計）
+前提:
+- macOS
+- Microsoft Excel
+- Python 3.9+
+- `appscript` と `openpyxl` が利用可能
 
-### 設計ドキュメント
-- **設計図v2 / v3** - システム設計書
-- **Claude Log** - 改修履歴（29ターン）
+1. `.xlsm` を生成
 
-### 旧システム（統合予定）
-- 工種別明細17シート + 旧帳票5シート
+```bash
+python3 scripts/build_workbook.py
+```
 
-## 原価計算タイプ
+2. ブック検証
 
-| タイプ | 方式 | 説明 |
-|--------|------|------|
-| A | 原価逆算型 | 客出し単価から利益率を逆算 |
-| B | 定価固定型 | 定価を固定し原価を別途管理 |
-| C | 単価固定型 | 単価固定で数量計算 |
+```bash
+python3 scripts/validate_workbook.py --workbook excel/見積原価管理システム.xlsm
+```
 
-## ステータス
+3. VBA必須チェック（厳密）
 
-開発中 - Phase 0〜5の実装を順次進行中。
+```bash
+python3 scripts/validate_workbook.py --workbook excel/見積原価管理システム.xlsm --require-vba
+```
+
+## 手動反映が必要な作業（Excel UI）
+
+`build_workbook.py` は `.xlsm` 化、`Ｓ表紙!I36:I55` の `INDIRECT` 化、旧外部リンク（`[1]Sheet!A1` 形式）の除去まで自動化します。以下はExcel UIで実施してください。
+
+1. `vba/Module_NewProject.bas` をVBEにインポート
+2. `操作パネル` に3ボタンを配置しマクロ割当
+3. `新規案件作成`, `S表紙PDF出力`, `領収書PDF出力` の実行確認
+
+詳細は `docs/BUILD_RUNBOOK_20260217.md` を参照してください。
+
+## 進捗確認・ログ・プッシュ運用
+
+毎回の確認とログ生成は次で実行できます。
+
+```bash
+scripts/check_and_log.sh
+```
+
+ログ出力先:
+- `docs/EXECUTION_LOG_YYYYMMDD.md`
+
+確認からコミット・プッシュまで一括実行する場合:
+
+```bash
+scripts/commit_and_push.sh "your commit message"
+```
