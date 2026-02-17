@@ -61,3 +61,10 @@
   - Added guided "next action" UX banner and step progress chips.
   - Added stricter project create validation/error messaging.
   - Added global failure-research and rebuild-plan docs for team sharing.
+
+## Vercel Deploy (2026-02-18 07:55:28 JST)
+- Project: `h-yoshino-link-8jps-projects/web`
+- Commit: `da30d7a`
+- Production URL: https://web-5dfzjhor7-h-yoshino-link-8jps-projects.vercel.app
+- Access check: `HTTP 200`
+- Change: Rebuilt project workspace into fixed 3-column cockpit (estimate, invoice/settlement, payment/docs/timeline).

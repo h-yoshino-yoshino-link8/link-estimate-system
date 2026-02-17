@@ -137,3 +137,14 @@ Route (app)                                 Size  First Load JS
 - Build result: PASS
 - Deploy URL: https://web-lashd1j9u-h-yoshino-link-8jps-projects.vercel.app
 - Access check: HTTP 200
+
+## 3-column cockpit rebuild
+- Timestamp: 2026-02-18 07:55:28 JST
+- Branch: `main`
+- Commit: `da30d7a`
+- Files:
+  - `app/web/app/projects/[projectId]/page.tsx`
+  - `app/web/app/globals.css`
+- Build result: PASS
+- Deploy URL: https://web-5dfzjhor7-h-yoshino-link-8jps-projects.vercel.app
+- Access check: HTTP 200
