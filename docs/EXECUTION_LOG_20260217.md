@@ -1,8 +1,8 @@
 # Execution Log (2026-02-17)
 
-- Timestamp: 2026-02-17 17:52:06 JST
+- Timestamp: 2026-02-17 18:02:08 JST
 - Branch: codex/build-link-estimate-system
-- Head: 440143d
+- Head: f4a0e19
 
 ## Python compile check
 - Command: python3 -m py_compile scripts/build_workbook.py scripts/validate_workbook.py
@@ -29,7 +29,7 @@ Reminder: import VBA module and assign buttons in Excel UI.
 
 ## API tests
 - Command: env PYTHONPATH=app/api python3 -m pytest -q app/api/tests
-....                                                                     [100%]
+......                                                                   [100%]
 =============================== warnings summary ===============================
 app/api/app/main.py:24
   /Users/yoshinohiroshi/Library/Mobile Documents/iCloud~md~obsidian/Documents/情報オブシディアン/100_Cursor/link-estimate-system/app/api/app/main.py:24: DeprecationWarning: 
@@ -50,7 +50,7 @@ app/api/app/main.py:24
     return self.router.on_event(event_type)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-4 passed, 2 warnings in 0.49s
+6 passed, 2 warnings in 0.67s
 - Result: PASS
 
 ## Web build
@@ -74,11 +74,11 @@ app/api/app/main.py:24
    Collecting build traces ...
 
 Route (app)                              Size     First Load JS
-┌ ○ /                                    2.54 kB        89.6 kB
+┌ ○ /                                    3.4 kB         90.5 kB
 └ ○ /_not-found                          875 B            88 kB
 + First Load JS shared by all            87.1 kB
-  ├ chunks/23-f2c2ec5da154e115.js        31.5 kB
-  ├ chunks/fd9d1056-62aaf4b921c84028.js  53.7 kB
+  ├ chunks/23-c61e312c20c04c5e.js        31.5 kB
+  ├ chunks/fd9d1056-b6e16a5f15b47ad4.js  53.7 kB
   └ other shared chunks (total)          1.91 kB
 
 
@@ -87,10 +87,20 @@ Route (app)                              Size     First Load JS
 - Result: PASS
 
 ## Git status (short)
- M .gitignore
- M README.md
+ M app/README.md
+ M app/api/app/config.py
+ M app/api/app/main.py
+ M app/api/app/models.py
+ M app/api/app/schemas.py
+ M app/api/app/seed.py
+ M app/api/requirements.txt
+ M app/api/tests/test_api.py
+ M app/web/app/globals.css
+ M app/web/app/page.tsx
+ M app/web/lib/api.ts
+ M "docs/APP\345\256\237\350\243\205\350\250\210\347\224\273_20260217.md"
  M docs/EXECUTION_LOG_20260217.md
- M scripts/check_and_log.sh
-?? app/
-?? "docs/APP\345\256\237\350\243\205\350\250\210\347\224\273_20260217.md"
+?? app/api/app/routers/sync.py
+?? app/api/app/routers/work_items.py
+?? app/api/app/services/excel_sync.py
 

@@ -1,5 +1,27 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
+export type WorkItemMaster = {
+  id: number;
+  source_item_id?: number | null;
+  category: string;
+  item_name: string;
+  specification?: string | null;
+  unit?: string | null;
+  standard_unit_price: number;
+};
+
+export type ProjectItem = {
+  id: number;
+  project_id: string;
+  category: string;
+  item_name: string;
+  specification?: string | null;
+  unit?: string | null;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+};
+
 export async function getCustomers() {
   const res = await fetch(`${API_BASE}/api/v1/customers`, { cache: "no-store" });
   if (!res.ok) throw new Error("顧客一覧の取得に失敗しました");
@@ -23,6 +45,58 @@ export async function createProject(payload: {
     throw new Error(`案件作成に失敗しました: ${body}`);
   }
   return res.json();
+}
+
+export async function syncExcel(workbookPath?: string) {
+  const res = await fetch(`${API_BASE}/api/v1/sync/excel`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ workbook_path: workbookPath || null }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Excel同期に失敗しました: ${body}`);
+  }
+  return res.json();
+}
+
+export async function getWorkItems() {
+  const res = await fetch(`${API_BASE}/api/v1/work-items`, { cache: "no-store" });
+  if (!res.ok) throw new Error("工事項目の取得に失敗しました");
+  return (await res.json()) as WorkItemMaster[];
+}
+
+export async function createProjectItem(
+  projectId: string,
+  payload: {
+    master_item_id?: number;
+    category?: string;
+    item_name?: string;
+    specification?: string;
+    unit?: string;
+    quantity: number;
+    unit_price?: number;
+  },
+) {
+  const res = await fetch(`${API_BASE}/api/v1/projects/${projectId}/items`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`明細追加に失敗しました: ${body}`);
+  }
+  return (await res.json()) as ProjectItem;
+}
+
+export async function getProjectItems(projectId: string) {
+  const res = await fetch(`${API_BASE}/api/v1/projects/${projectId}/items`, { cache: "no-store" });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`明細一覧取得に失敗しました: ${body}`);
+  }
+  return (await res.json()) as ProjectItem[];
 }
 
 export async function exportEstimate(projectId: string) {

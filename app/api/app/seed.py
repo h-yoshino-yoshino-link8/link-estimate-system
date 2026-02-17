@@ -7,7 +7,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import Customer, Invoice, Project
+from .models import Customer, Invoice, Project, ProjectItem, WorkItemMaster
 
 
 def seed_data(db: Session) -> None:
@@ -54,6 +54,48 @@ def seed_data(db: Session) -> None:
                 project_id="P-003",
                 invoice_amount=1254440,
                 note="seed",
+            )
+        )
+        db.commit()
+
+    if not db.execute(select(WorkItemMaster.id)).first():
+        db.add_all(
+            [
+                WorkItemMaster(
+                    source_item_id=1,
+                    category="解体工事",
+                    item_name="発生材処理費",
+                    specification="混載",
+                    unit="㎥",
+                    standard_unit_price=20000,
+                    default_vendor_name="株式会社テスト解体",
+                    margin_rate=0.2,
+                ),
+                WorkItemMaster(
+                    source_item_id=2,
+                    category="電気設備",
+                    item_name="分電盤交換",
+                    specification="既存撤去含む",
+                    unit="式",
+                    standard_unit_price=85000,
+                    default_vendor_name="株式会社テスト電設",
+                    margin_rate=0.25,
+                ),
+            ]
+        )
+        db.commit()
+
+    if not db.execute(select(ProjectItem.id)).first():
+        db.add(
+            ProjectItem(
+                project_id="P-003",
+                category="解体工事",
+                item_name="発生材処理費",
+                specification="混載",
+                unit="㎥",
+                quantity=2,
+                unit_price=20000,
+                line_total=40000,
             )
         )
         db.commit()

@@ -5,6 +5,19 @@
 - `api/`: FastAPI backend
 - `web/`: Next.js frontend
 
+## MVP Endpoints
+
+- `GET /health`
+- `GET /api/v1/customers`
+- `POST /api/v1/projects`
+- `GET /api/v1/projects`
+- `POST /api/v1/documents/estimate-cover`
+- `POST /api/v1/documents/receipt`
+- `POST /api/v1/sync/excel`
+- `GET /api/v1/work-items`
+- `GET /api/v1/projects/{project_id}/items`
+- `POST /api/v1/projects/{project_id}/items`
+
 ## Local Run (without Docker)
 
 ### API

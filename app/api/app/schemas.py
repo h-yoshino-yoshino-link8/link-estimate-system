@@ -47,3 +47,49 @@ class EstimateCoverRequest(BaseModel):
 
 class ReceiptRequest(BaseModel):
     invoice_id: str
+
+
+class ExcelSyncRequest(BaseModel):
+    workbook_path: Optional[str] = None
+
+
+class ExcelSyncResponse(BaseModel):
+    workbook_path: str
+    customers_upserted: int
+    projects_upserted: int
+    invoices_upserted: int
+    work_items_upserted: int
+
+
+class WorkItemMasterRead(BaseModel):
+    id: int
+    source_item_id: Optional[int] = None
+    category: str
+    item_name: str
+    specification: Optional[str] = None
+    unit: Optional[str] = None
+    standard_unit_price: float
+    default_vendor_name: Optional[str] = None
+    margin_rate: Optional[float] = None
+
+
+class ProjectItemCreate(BaseModel):
+    master_item_id: Optional[int] = None
+    category: Optional[str] = None
+    item_name: Optional[str] = None
+    specification: Optional[str] = None
+    unit: Optional[str] = None
+    quantity: float = Field(default=1.0, gt=0)
+    unit_price: Optional[float] = Field(default=None, ge=0)
+
+
+class ProjectItemRead(BaseModel):
+    id: int
+    project_id: str
+    category: str
+    item_name: str
+    specification: Optional[str] = None
+    unit: Optional[str] = None
+    quantity: float
+    unit_price: float
+    line_total: float

@@ -40,6 +40,9 @@ class Project(Base):
     created_at_ts: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
     customer: Mapped[Customer] = relationship("Customer")
+    items: Mapped[list["ProjectItem"]] = relationship(
+        "ProjectItem", back_populates="project", cascade="all, delete-orphan"
+    )
 
 
 class Invoice(Base):
@@ -54,3 +57,36 @@ class Invoice(Base):
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     project: Mapped[Project] = relationship("Project")
+
+
+class WorkItemMaster(Base):
+    __tablename__ = "work_item_master"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    source_item_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    category: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    item_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    specification: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    unit: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    standard_unit_price: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    default_vendor_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    margin_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+
+class ProjectItem(Base):
+    __tablename__ = "project_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    project_id: Mapped[str] = mapped_column(
+        String(16), ForeignKey("projects.project_id"), nullable=False, index=True
+    )
+    category: Mapped[str] = mapped_column(String(128), nullable=False)
+    item_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    specification: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    unit: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    quantity: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
+    unit_price: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    line_total: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    created_at_ts: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+
+    project: Mapped[Project] = relationship("Project", back_populates="items")
