@@ -38,6 +38,8 @@ export default function HomePage() {
   const [projectItems, setProjectItems] = useState<ProjectItem[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
+  const [allPayments, setAllPayments] = useState<Payment[]>([]);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
 
   const [loadingCustomers, setLoadingCustomers] = useState(true);
@@ -77,9 +79,58 @@ export default function HomePage() {
   const [message, setMessage] = useState("");
   const [working, setWorking] = useState(false);
 
+  const yen = (value: number) => `¥${Math.round(value).toLocaleString()}`;
+
   const masterOptions = useMemo(
     () => workItems.map((w) => ({ id: w.id, label: `${w.category} / ${w.item_name} / ¥${w.standard_unit_price}` })),
     [workItems],
+  );
+
+  const statusEntries = useMemo(() => {
+    if (!summary) return [] as Array<[string, number]>;
+    return Object.entries(summary.project_status_counts).sort((a, b) => b[1] - a[1]);
+  }, [summary]);
+
+  const maxStatusCount = useMemo(
+    () => (statusEntries.length > 0 ? Math.max(...statusEntries.map(([, count]) => count), 1) : 1),
+    [statusEntries],
+  );
+
+  const pendingInvoices = useMemo(
+    () =>
+      allInvoices
+        .filter((x) => x.remaining_amount > 0)
+        .sort((a, b) => b.remaining_amount - a.remaining_amount)
+        .slice(0, 6),
+    [allInvoices],
+  );
+
+  const pendingPayments = useMemo(
+    () =>
+      allPayments
+        .filter((x) => x.remaining_amount > 0)
+        .sort((a, b) => b.remaining_amount - a.remaining_amount)
+        .slice(0, 6),
+    [allPayments],
+  );
+
+  const invoiceCollectionRate = useMemo(() => {
+    const total = summary?.invoice_total_amount ?? 0;
+    const remaining = summary?.invoice_remaining_amount ?? 0;
+    if (total <= 0) return 0;
+    return Math.max(0, Math.min(100, ((total - remaining) / total) * 100));
+  }, [summary]);
+
+  const paymentSettlementRate = useMemo(() => {
+    const total = summary?.payment_total_amount ?? 0;
+    const remaining = summary?.payment_remaining_amount ?? 0;
+    if (total <= 0) return 0;
+    return Math.max(0, Math.min(100, ((total - remaining) / total) * 100));
+  }, [summary]);
+
+  const grossSpread = useMemo(
+    () => (summary?.invoice_total_amount ?? 0) - (summary?.payment_total_amount ?? 0),
+    [summary],
   );
 
   const loadCustomers = async () => {
@@ -132,8 +183,14 @@ export default function HomePage() {
   };
 
   const loadSummary = async () => {
-    const data = await getDashboardSummary();
-    setSummary(data);
+    const [summaryData, invoiceRows, paymentRows] = await Promise.all([
+      getDashboardSummary(),
+      getInvoices(),
+      getPayments(),
+    ]);
+    setSummary(summaryData);
+    setAllInvoices(invoiceRows);
+    setAllPayments(paymentRows);
   };
 
   useEffect(() => {
@@ -398,16 +455,105 @@ export default function HomePage() {
         <p className="sub">新規案件作成・Excel同期・明細登録・請求/支払更新・帳票PDF出力。</p>
       </section>
 
+      <section className="kpi-grid">
+        <article className="kpi-card">
+          <p className="kpi-label">案件数</p>
+          <p className="kpi-value">{summary?.project_total ?? 0}</p>
+          <p className="kpi-note">進行中の全案件</p>
+        </article>
+        <article className="kpi-card">
+          <p className="kpi-label">請求残額</p>
+          <p className="kpi-value">{yen(summary?.invoice_remaining_amount ?? 0)}</p>
+          <p className="kpi-note">回収待ち</p>
+        </article>
+        <article className="kpi-card">
+          <p className="kpi-label">支払残額</p>
+          <p className="kpi-value">{yen(summary?.payment_remaining_amount ?? 0)}</p>
+          <p className="kpi-note">支払待ち</p>
+        </article>
+        <article className="kpi-card">
+          <p className="kpi-label">粗利見込</p>
+          <p className="kpi-value">{yen(grossSpread)}</p>
+          <p className="kpi-note">請求合計 - 支払合計</p>
+        </article>
+      </section>
+
+      <section className="dash-grid">
+        <article className="panel">
+          <h2>案件ステータス分布</h2>
+          <div className="status-stack">
+            {statusEntries.length === 0 ? <p className="item-row">データなし</p> : null}
+            {statusEntries.map(([status, count]) => (
+              <div key={status} className="status-row">
+                <div className="status-meta">
+                  <span>{status}</span>
+                  <strong>{count}</strong>
+                </div>
+                <div className="status-track">
+                  <span style={{ width: `${Math.max((count / maxStatusCount) * 100, 8)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="panel">
+          <h2>消込進捗</h2>
+          <div className="metric-block">
+            <div className="metric-row">
+              <span>請求回収率</span>
+              <strong>{invoiceCollectionRate.toFixed(1)}%</strong>
+            </div>
+            <div className="status-track">
+              <span style={{ width: `${invoiceCollectionRate}%` }} />
+            </div>
+          </div>
+          <div className="metric-block">
+            <div className="metric-row">
+              <span>支払消込率</span>
+              <strong>{paymentSettlementRate.toFixed(1)}%</strong>
+            </div>
+            <div className="status-track status-track-cyan">
+              <span style={{ width: `${paymentSettlementRate}%` }} />
+            </div>
+          </div>
+          <button onClick={onReloadFinance} disabled={working}>
+            集計を更新
+          </button>
+        </article>
+
+        <article className="panel">
+          <h2>未消込アラート</h2>
+          <div className="items-box">
+            <p className="item-row">請求 未消込</p>
+            {pendingInvoices.slice(0, 3).map((inv) => (
+              <p key={inv.invoice_id} className="item-row">
+                {inv.invoice_id}: 残{yen(inv.remaining_amount)}
+              </p>
+            ))}
+            <p className="item-row">支払 未消込</p>
+            {pendingPayments.slice(0, 3).map((pay) => (
+              <p key={pay.payment_id} className="item-row">
+                {pay.payment_id}: 残{yen(pay.remaining_amount)}
+              </p>
+            ))}
+            {pendingInvoices.length === 0 && pendingPayments.length === 0 ? (
+              <p className="item-row">未消込はありません</p>
+            ) : null}
+          </div>
+        </article>
+      </section>
+
       <section className="grid">
         <article className="panel">
           <h2>ダッシュボード集計</h2>
           <div className="items-box">
             <p className="item-row">案件数: {summary?.project_total ?? 0}</p>
-            <p className="item-row">請求合計: ¥{(summary?.invoice_total_amount ?? 0).toLocaleString()}</p>
-            <p className="item-row">請求残額: ¥{(summary?.invoice_remaining_amount ?? 0).toLocaleString()}</p>
-            <p className="item-row">支払合計: ¥{(summary?.payment_total_amount ?? 0).toLocaleString()}</p>
-            <p className="item-row">支払残額: ¥{(summary?.payment_remaining_amount ?? 0).toLocaleString()}</p>
-            <p className="item-row">明細合計: ¥{(summary?.item_total_amount ?? 0).toLocaleString()}</p>
+            <p className="item-row">請求合計: {yen(summary?.invoice_total_amount ?? 0)}</p>
+            <p className="item-row">請求残額: {yen(summary?.invoice_remaining_amount ?? 0)}</p>
+            <p className="item-row">支払合計: {yen(summary?.payment_total_amount ?? 0)}</p>
+            <p className="item-row">支払残額: {yen(summary?.payment_remaining_amount ?? 0)}</p>
+            <p className="item-row">明細合計: {yen(summary?.item_total_amount ?? 0)}</p>
             {summary
               ? Object.entries(summary.project_status_counts).map(([status, count]) => (
                   <p className="item-row" key={status}>

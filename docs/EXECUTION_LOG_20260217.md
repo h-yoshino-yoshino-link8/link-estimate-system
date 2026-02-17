@@ -1,8 +1,8 @@
 # Execution Log (2026-02-17)
 
-- Timestamp: 2026-02-17 18:49:14 JST
+- Timestamp: 2026-02-17 19:03:51 JST
 - Branch: codex/build-link-estimate-system
-- Head: 7f8569e
+- Head: ea12ee3
 
 ## Python compile check
 - Command: python3 -m py_compile scripts/build_workbook.py scripts/validate_workbook.py
@@ -50,7 +50,7 @@ app/api/app/main.py:24
     return self.router.on_event(event_type)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-9 passed, 2 warnings in 0.66s
+9 passed, 2 warnings in 0.64s
 - Result: PASS
 
 ## Web build
@@ -60,6 +60,7 @@ app/api/app/main.py:24
 > next build
 
   ▲ Next.js 14.2.5
+  - Environments: .env.local
 
    Creating an optimized production build ...
  ✓ Compiled successfully
@@ -74,7 +75,7 @@ app/api/app/main.py:24
    Collecting build traces ...
 
 Route (app)                              Size     First Load JS
-┌ ○ /                                    10.2 kB        97.4 kB
+┌ ○ /                                    11 kB          98.1 kB
 └ ○ /_not-found                          875 B            88 kB
 + First Load JS shared by all            87.1 kB
   ├ chunks/23-c61e312c20c04c5e.js        31.5 kB
@@ -89,5 +90,5 @@ Route (app)                              Size     First Load JS
 ## Git status (short)
  M app/web/app/globals.css
  M app/web/app/page.tsx
-?? app/web/public/
+ M docs/EXECUTION_LOG_20260217.md
 
