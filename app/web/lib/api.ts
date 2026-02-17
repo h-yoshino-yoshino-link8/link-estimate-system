@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE ?? "").replace(/\/$/, "");
 
 export type WorkItemMaster = {
   id: number;
@@ -90,6 +90,21 @@ export async function syncExcel(workbookPath?: string) {
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Excel同期に失敗しました: ${body}`);
+  }
+  return res.json();
+}
+
+export async function syncExcelUpload(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+
+  const res = await fetch(`${API_BASE}/api/v1/sync/excel/upload`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Excelアップロード同期に失敗しました: ${body}`);
   }
   return res.json();
 }

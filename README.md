@@ -71,6 +71,16 @@ python3 scripts/validate_workbook.py --workbook excel/見積原価管理シス�
 
 詳細は `app/README.md` を参照してください。
 
+## ネット公開（個人運用向け）
+
+本リポジトリは `render.yaml` により、GitHub連携で `Web + API + DB` を構築できます。
+
+1. Render で Blueprint デプロイ（`render.yaml` を利用）
+2. `link-estimate-web` URL で動作確認
+3. 以後は GitHub push ごとに自動デプロイ
+
+詳細手順は `docs/DEPLOYMENT_PERSONAL.md` を参照してください。
+
 ## 進捗確認・ログ・プッシュ運用
 
 毎回の確認とログ生成は次で実行できます。
@@ -87,3 +97,5 @@ scripts/check_and_log.sh
 ```bash
 scripts/commit_and_push.sh "your commit message"
 ```
+
+デプロイフック/ヘルスチェックURLを設定した場合、push後に自動でデプロイ確認ログも出力します。

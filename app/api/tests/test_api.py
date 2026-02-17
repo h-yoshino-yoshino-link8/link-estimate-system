@@ -161,6 +161,24 @@ def test_excel_sync_endpoint() -> None:
         assert any(p["project_id"] == "P-101" for p in projects_body["items"])
 
 
+def test_excel_sync_upload_endpoint() -> None:
+    wb_path = TMP_DIR / "sync_upload_source.xlsx"
+    _create_sync_workbook(wb_path)
+
+    with TestClient(app) as client:
+        with wb_path.open("rb") as fp:
+            sync_resp = client.post(
+                "/api/v1/sync/excel/upload",
+                files={"file": ("sync_upload_source.xlsx", fp, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+            )
+        assert sync_resp.status_code == 200
+        body = sync_resp.json()
+        assert body["customers_upserted"] >= 1
+        assert body["projects_upserted"] >= 1
+        assert body["invoices_upserted"] >= 1
+        assert body["work_items_upserted"] >= 1
+
+
 def test_invoice_and_payment_endpoints() -> None:
     with TestClient(app) as client:
         invoice_create = client.post(

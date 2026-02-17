@@ -28,4 +28,8 @@ else
   git push -u origin "$BRANCH"
 fi
 
+if [[ -n "${RENDER_API_DEPLOY_HOOK_URL:-}" || -n "${RENDER_WEB_DEPLOY_HOOK_URL:-}" || -n "${DEPLOY_API_HEALTH_URL:-}" || -n "${DEPLOY_WEB_HEALTH_URL:-}" ]]; then
+  scripts/deploy_and_log.sh
+fi
+
 echo "Committed and pushed: $BRANCH"

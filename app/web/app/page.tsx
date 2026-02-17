@@ -16,6 +16,7 @@ import {
   getProjectItems,
   getWorkItems,
   syncExcel,
+  syncExcelUpload,
   updateInvoice,
   updatePayment,
   type DashboardSummary,
@@ -51,6 +52,7 @@ export default function HomePage() {
   const [invoiceIdForPdf, setInvoiceIdForPdf] = useState("INV-001");
 
   const [syncWorkbookPath, setSyncWorkbookPath] = useState("");
+  const [syncWorkbookFile, setSyncWorkbookFile] = useState<File | null>(null);
 
   const [projectIdForItem, setProjectIdForItem] = useState("P-003");
   const [masterItemId, setMasterItemId] = useState("");
@@ -230,7 +232,9 @@ export default function HomePage() {
     setWorking(true);
     setMessage("");
     try {
-      const result = await syncExcel(syncWorkbookPath.trim() || undefined);
+      const result = syncWorkbookFile
+        ? await syncExcelUpload(syncWorkbookFile)
+        : await syncExcel(syncWorkbookPath.trim() || undefined);
       await loadCustomers();
       await loadWorkItems();
       await loadFinance(projectIdForInvoice);
@@ -238,6 +242,7 @@ export default function HomePage() {
       setMessage(
         `同期完了: 顧客${result.customers_upserted} / 案件${result.projects_upserted} / 請求${result.invoices_upserted} / 支払${result.payments_upserted} / 項目${result.work_items_upserted}`,
       );
+      setSyncWorkbookFile(null);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Excel同期に失敗しました");
     } finally {
@@ -420,6 +425,14 @@ export default function HomePage() {
               value={syncWorkbookPath}
               onChange={(e) => setSyncWorkbookPath(e.target.value)}
               placeholder="/path/to/見積原価管理システム.xlsm"
+            />
+          </label>
+          <label>
+            Workbook Upload（公開環境向け）
+            <input
+              type="file"
+              accept=".xlsx,.xlsm,.xltx,.xltm"
+              onChange={(e) => setSyncWorkbookFile(e.target.files?.[0] ?? null)}
             />
           </label>
           <button onClick={onSyncExcel} disabled={working}>

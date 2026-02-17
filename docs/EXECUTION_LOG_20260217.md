@@ -1,8 +1,8 @@
 # Execution Log (2026-02-17)
 
-- Timestamp: 2026-02-17 18:33:29 JST
+- Timestamp: 2026-02-17 18:40:46 JST
 - Branch: codex/build-link-estimate-system
-- Head: a96bf64
+- Head: e9e64f4
 
 ## Python compile check
 - Command: python3 -m py_compile scripts/build_workbook.py scripts/validate_workbook.py
@@ -29,7 +29,7 @@ Reminder: import VBA module and assign buttons in Excel UI.
 
 ## API tests
 - Command: env PYTHONPATH=app/api python3 -m pytest -q app/api/tests
-........                                                                 [100%]
+.........                                                                [100%]
 =============================== warnings summary ===============================
 app/api/app/main.py:24
   /Users/yoshinohiroshi/Library/Mobile Documents/iCloud~md~obsidian/Documents/情報オブシディアン/100_Cursor/link-estimate-system/app/api/app/main.py:24: DeprecationWarning: 
@@ -50,7 +50,7 @@ app/api/app/main.py:24
     return self.router.on_event(event_type)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-8 passed, 2 warnings in 0.69s
+9 passed, 2 warnings in 1.03s
 - Result: PASS
 
 ## Web build
@@ -74,7 +74,7 @@ app/api/app/main.py:24
    Collecting build traces ...
 
 Route (app)                              Size     First Load JS
-┌ ○ /                                    4.83 kB        91.9 kB
+┌ ○ /                                    5.01 kB        92.1 kB
 └ ○ /_not-found                          875 B            88 kB
 + First Load JS shared by all            87.1 kB
   ├ chunks/23-c61e312c20c04c5e.js        31.5 kB
@@ -87,13 +87,18 @@ Route (app)                              Size     First Load JS
 - Result: PASS
 
 ## Git status (short)
+ M README.md
  M app/README.md
- M app/api/app/main.py
- M app/api/app/routers/finance.py
- M app/api/app/schemas.py
+ M app/api/app/routers/sync.py
  M app/api/tests/test_api.py
+ M app/docker-compose.yml
  M app/web/app/page.tsx
  M app/web/lib/api.ts
+ M app/web/next.config.mjs
  M docs/EXECUTION_LOG_20260217.md
-?? app/api/app/routers/dashboard.py
+ M scripts/commit_and_push.sh
+?? .github/
+?? docs/DEPLOYMENT_PERSONAL.md
+?? render.yaml
+?? scripts/deploy_and_log.sh
 

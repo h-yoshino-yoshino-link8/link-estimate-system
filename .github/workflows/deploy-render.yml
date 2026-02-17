@@ -1,0 +1,57 @@
+name: Deploy Render
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: ${{ secrets.RENDER_API_DEPLOY_HOOK_URL != '' || secrets.RENDER_WEB_DEPLOY_HOOK_URL != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger API deploy
+        if: ${{ secrets.RENDER_API_DEPLOY_HOOK_URL != '' }}
+        env:
+          URL: ${{ secrets.RENDER_API_DEPLOY_HOOK_URL }}
+        run: curl -fsS -X POST "$URL"
+
+      - name: Trigger Web deploy
+        if: ${{ secrets.RENDER_WEB_DEPLOY_HOOK_URL != '' }}
+        env:
+          URL: ${{ secrets.RENDER_WEB_DEPLOY_HOOK_URL }}
+        run: curl -fsS -X POST "$URL"
+
+      - name: Wait API health
+        if: ${{ secrets.DEPLOY_API_HEALTH_URL != '' }}
+        env:
+          URL: ${{ secrets.DEPLOY_API_HEALTH_URL }}
+        run: |
+          for i in $(seq 1 36); do
+            code="$(curl -s -o /tmp/api-health.txt -w '%{http_code}' "$URL" || true)"
+            if [ "$code" = "200" ]; then
+              echo "API healthy"
+              cat /tmp/api-health.txt
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "API health check timeout"
+          exit 1
+
+      - name: Wait Web health
+        if: ${{ secrets.DEPLOY_WEB_HEALTH_URL != '' }}
+        env:
+          URL: ${{ secrets.DEPLOY_WEB_HEALTH_URL }}
+        run: |
+          for i in $(seq 1 36); do
+            code="$(curl -s -o /tmp/web-health.txt -w '%{http_code}' "$URL" || true)"
+            if [ "$code" = "200" ]; then
+              echo "Web healthy"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Web health check timeout"
+          exit 1
