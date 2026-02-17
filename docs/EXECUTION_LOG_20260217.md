@@ -159,3 +159,14 @@ Route (app)                                 Size  First Load JS
 - Build result: PASS
 - Deploy URL: https://web-7l87e9evn-h-yoshino-link-8jps-projects.vercel.app
 - Access check: HTTP 200
+
+## Claude Code handoff playbook added
+- Timestamp: 2026-02-18 08:11:11 JST
+- Branch: `main`
+- Head: `b383efe`
+- Files:
+  - `docs/CLAUDE_CODE_HANDOFF_PLAYBOOK_20260218.md`
+  - `docs/EXECUTION_LOG_20260217.md`
+- Purpose:
+  - Added a copy-paste instruction pack for Claude Code execution.
+  - Added a structured return template for Claude -> Codex handoff.
