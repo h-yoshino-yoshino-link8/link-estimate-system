@@ -144,8 +144,9 @@ export default function ProjectsPage() {
             目標粗利率
             <input value={marginRate} onChange={(e) => setMarginRate(e.target.value)} />
           </label>
+          <p className="fm-row-note">入力後に保存ボタンを押すと、案件が作成されて案件ワークスペースへ移動します。</p>
           <button onClick={onCreateProject} disabled={working || loading}>
-            案件を作成
+            保存して案件を作成
           </button>
         </article>
 

@@ -90,8 +90,10 @@ export default function ProjectWorkspacePage() {
   );
   const activeInvoice = useMemo(() => invoices.find((x) => x.invoice_id === invoiceToUpdate) ?? null, [invoices, invoiceToUpdate]);
   const activePayment = useMemo(() => payments.find((x) => x.payment_id === paymentToUpdate) ?? null, [payments, paymentToUpdate]);
-  const grossEstimate = invoiceTotal - paymentTotal;
-  const grossRate = invoiceTotal > 0 ? (grossEstimate / invoiceTotal) * 100 : 0;
+  const settledSales = Math.max(invoiceTotal - invoiceRemaining, 0);
+  const revenueBase = invoiceTotal > 0 ? invoiceTotal : estimateTotal;
+  const grossEstimate = revenueBase - paymentTotal;
+  const grossRate = revenueBase > 0 ? (grossEstimate / revenueBase) * 100 : 0;
 
   const loadWorkspace = async () => {
     const [projectResp, workItemsResp, itemsResp, invoicesResp, paymentsResp] = await Promise.all([
@@ -352,24 +354,25 @@ export default function ProjectWorkspacePage() {
 
         <section className="fm-kpi-row">
           <article className="fm-kpi">
-            <span>請求総額</span>
+            <span>見積合計</span>
+            <strong>{yen(estimateTotal)}</strong>
+          </article>
+          <article className="fm-kpi">
+            <span>請求合計</span>
             <strong>{yen(invoiceTotal)}</strong>
           </article>
           <article className="fm-kpi">
-            <span>売上(未回収除く)</span>
-            <strong>{yen(invoiceTotal - invoiceRemaining)}</strong>
+            <span>入金済合計</span>
+            <strong>{yen(settledSales)}</strong>
           </article>
           <article className="fm-kpi">
-            <span>原価</span>
+            <span>原価合計</span>
             <strong>{yen(paymentTotal)}</strong>
           </article>
           <article className="fm-kpi">
-            <span>利益</span>
+            <span>粗利見込</span>
             <strong>{yen(grossEstimate)}</strong>
-          </article>
-          <article className="fm-kpi">
-            <span>利益率</span>
-            <strong>{grossRate.toFixed(1)}%</strong>
+            <span>利益率 {grossRate.toFixed(1)}%</span>
           </article>
         </section>
 

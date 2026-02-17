@@ -607,35 +607,94 @@ function localDashboardOverview(): DashboardOverview {
   };
 }
 
+function sanitizeAscii(value: string) {
+  return value.replace(/[^\x20-\x7e]/g, "?");
+}
+
+function pdfEscape(value: string) {
+  return sanitizeAscii(value).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+}
+
+function asciiToBytes(value: string) {
+  const bytes = new Uint8Array(value.length);
+  for (let i = 0; i < value.length; i += 1) {
+    bytes[i] = value.charCodeAt(i) & 0xff;
+  }
+  return bytes;
+}
+
+function buildLandscapeA4Pdf(lines: string[]) {
+  const width = 842; // A4 landscape (pt)
+  const height = 595;
+
+  const safeLines = lines.map((line) => pdfEscape(line));
+  let stream = "BT\n/F1 14 Tf\n50 545 Td\n20 TL\n";
+  safeLines.forEach((line) => {
+    stream += `(${line}) Tj\nT*\n`;
+  });
+  stream += "ET\n";
+
+  const objects = [
+    "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
+    "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
+    `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n`,
+    `4 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}endstream\nendobj\n`,
+    "5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
+  ];
+
+  let pdf = "%PDF-1.4\n";
+  const offsets: number[] = [0];
+  objects.forEach((obj) => {
+    offsets.push(pdf.length);
+    pdf += obj;
+  });
+
+  const xrefPos = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n`;
+  pdf += "0000000000 65535 f \n";
+  for (let i = 1; i <= objects.length; i += 1) {
+    pdf += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF`;
+
+  return new Blob([asciiToBytes(pdf)], { type: "application/pdf" });
+}
+
 function localEstimateBlob(projectId: string) {
   const db = readLocalDb();
   const project = db.projects.find((p) => p.project_id === projectId);
   const items = db.project_items.filter((x) => x.project_id === projectId);
   const total = items.reduce((sum, x) => sum + Number(x.line_total || 0), 0);
-  const text = [
-    "見積書（ローカルモード）",
-    `案件ID: ${projectId}`,
-    `物件名: ${project?.project_name ?? "-"}`,
-    `顧客: ${project?.customer_name ?? "-"}`,
-    `見積合計: ¥${Math.round(total).toLocaleString()}`,
+  return buildLandscapeA4Pdf([
+    "Estimate (Local Mode)",
+    `Project ID: ${projectId}`,
+    `Project Name: ${project?.project_name ?? "-"}`,
+    `Customer: ${project?.customer_name ?? "-"}`,
+    `Estimate Total: JPY ${Math.round(total).toLocaleString()}`,
     "",
-    "※API未接続のためブラウザ内データで生成",
-  ].join("\n");
-  return new Blob([text], { type: "application/pdf" });
+    "Generated from local browser data.",
+    "Paper: A4 Landscape",
+  ]);
 }
 
 function localReceiptBlob(invoiceId: string) {
   const db = readLocalDb();
   const invoice = db.invoices.find((x) => x.invoice_id === invoiceId);
-  const text = [
-    "領収書（ローカルモード）",
-    `請求ID: ${invoiceId}`,
-    `案件ID: ${invoice?.project_id ?? "-"}`,
-    `入金額: ¥${Math.round(Number(invoice?.paid_amount || 0)).toLocaleString()}`,
+  return buildLandscapeA4Pdf([
+    "Receipt (Local Mode)",
+    `Invoice ID: ${invoiceId}`,
+    `Project ID: ${invoice?.project_id ?? "-"}`,
+    `Paid Amount: JPY ${Math.round(Number(invoice?.paid_amount || 0)).toLocaleString()}`,
     "",
-    "※API未接続のためブラウザ内データで生成",
-  ].join("\n");
-  return new Blob([text], { type: "application/pdf" });
+    "Generated from local browser data.",
+    "Paper: A4 Landscape",
+  ]);
+}
+
+async function ensureReadablePdf(blob: Blob, fallback: () => Blob) {
+  const header = await blob.slice(0, 5).text();
+  if (header === "%PDF-") return blob;
+  return fallback();
 }
 
 export async function getCustomers() {
@@ -950,7 +1009,8 @@ export async function exportEstimate(projectId: string) {
         body: JSON.stringify({ project_id: projectId }),
       });
       if (!res.ok) throw new Error("見積書PDF出力に失敗しました");
-      return { blob: await res.blob(), disposition: res.headers.get("content-disposition") };
+      const blob = await ensureReadablePdf(await res.blob(), () => localEstimateBlob(projectId));
+      return { blob, disposition: res.headers.get("content-disposition") };
     },
     () => ({ blob: localEstimateBlob(projectId), disposition: null }),
   );
@@ -965,7 +1025,8 @@ export async function exportReceipt(invoiceId: string) {
         body: JSON.stringify({ invoice_id: invoiceId }),
       });
       if (!res.ok) throw new Error("領収書PDF出力に失敗しました");
-      return { blob: await res.blob(), disposition: res.headers.get("content-disposition") };
+      const blob = await ensureReadablePdf(await res.blob(), () => localReceiptBlob(invoiceId));
+      return { blob, disposition: res.headers.get("content-disposition") };
     },
     () => ({ blob: localReceiptBlob(invoiceId), disposition: null }),
   );
