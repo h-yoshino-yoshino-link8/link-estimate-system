@@ -27,3 +27,10 @@
 - Production URL: https://web-i40jtwmms-h-yoshino-link-8jps-projects.vercel.app
 - Access check: `HTTP 200`
 - Change: Rebuilt project workspace into FileMaker-style dense UI (工事管理画面) while preserving estimate/invoice/payment/document handlers.
+
+## Vercel Deploy (2026-02-17 22:43:18 JST)
+- Project: `h-yoshino-link-8jps-projects/web`
+- Commit: `3fa841a`
+- Production URL: https://web-huwpjthyi-h-yoshino-link-8jps-projects.vercel.app
+- Access check: `HTTP 200`
+- Change: Simplified project workspace to step-by-step workflow layout (STEP1〜STEP4) with clearer primary actions.

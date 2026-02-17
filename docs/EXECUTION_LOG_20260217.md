@@ -86,3 +86,15 @@ Route (app)                                 Size  First Load JS
 - Build result: PASS
 - Deploy URL: https://web-i40jtwmms-h-yoshino-link-8jps-projects.vercel.app
 - Access check: HTTP 200
+
+## UI simplification (step-by-step workflow)
+- Timestamp: 2026-02-17 22:42:09 JST
+- Branch: `main`
+- Commit: `3fa841a`
+- Files:
+  - `app/web/app/projects/[projectId]/page.tsx`
+  - `app/web/app/globals.css`
+- Build command: `npm --prefix app/web run build`
+- Build result: PASS
+- Deploy URL: https://web-huwpjthyi-h-yoshino-link-8jps-projects.vercel.app
+- Access check: HTTP 200
