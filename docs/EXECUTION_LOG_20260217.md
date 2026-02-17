@@ -1,8 +1,8 @@
 # Execution Log (2026-02-17)
 
-- Timestamp: 2026-02-17 18:44:00 JST
+- Timestamp: 2026-02-17 18:49:14 JST
 - Branch: codex/build-link-estimate-system
-- Head: 12edfe8
+- Head: 7f8569e
 
 ## Python compile check
 - Command: python3 -m py_compile scripts/build_workbook.py scripts/validate_workbook.py
@@ -50,7 +50,7 @@ app/api/app/main.py:24
     return self.router.on_event(event_type)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-9 passed, 2 warnings in 0.71s
+9 passed, 2 warnings in 0.66s
 - Result: PASS
 
 ## Web build
@@ -74,12 +74,12 @@ app/api/app/main.py:24
    Collecting build traces ...
 
 Route (app)                              Size     First Load JS
-┌ ○ /                                    5.01 kB        92.1 kB
+┌ ○ /                                    10.2 kB        97.4 kB
 └ ○ /_not-found                          875 B            88 kB
 + First Load JS shared by all            87.1 kB
   ├ chunks/23-c61e312c20c04c5e.js        31.5 kB
   ├ chunks/fd9d1056-b6e16a5f15b47ad4.js  53.7 kB
-  └ other shared chunks (total)          1.91 kB
+  └ other shared chunks (total)          1.94 kB
 
 
 ○  (Static)  prerendered as static content
@@ -87,6 +87,7 @@ Route (app)                              Size     First Load JS
 - Result: PASS
 
 ## Git status (short)
- M .github/workflows/deploy-render.yml
- M docs/EXECUTION_LOG_20260217.md
+ M app/web/app/globals.css
+ M app/web/app/page.tsx
+?? app/web/public/
 

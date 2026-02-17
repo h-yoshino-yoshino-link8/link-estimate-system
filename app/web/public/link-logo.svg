@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" role="img" aria-labelledby="title desc">
+  <title id="title">LinK Logo</title>
+  <desc id="desc">LinK company logo with cyan linked circles and gray script text.</desc>
+  <g fill="none" stroke="#9ddfe4" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="176" cy="250" rx="58" ry="52" />
+    <ellipse cx="324" cy="250" rx="58" ry="52" />
+    <path d="M234 250c26 0 30 0 32 0" />
+  </g>
+  <g fill="#6f6f73" stroke="#6f6f73" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M166 346c-10-38 9-156 28-189" />
+    <path d="M204 249c6-20 9-35 15-39" />
+    <path d="M242 286c8-26 13-41 22-49" />
+    <path d="M245 284c16 18 34 22 44 3" />
+    <path d="M300 325c-4-52 6-128 20-166" />
+    <path d="M320 256c17-12 28-24 39-34" />
+    <path d="M323 257c13 22 24 37 38 54" />
+  </g>
+</svg>

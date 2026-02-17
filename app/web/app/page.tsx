@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
   createInvoice,
@@ -389,6 +390,9 @@ export default function HomePage() {
   return (
     <main className="page">
       <section className="hero">
+        <div className="hero-head">
+          <Image src="/link-logo.svg" alt="LinKロゴ" width={144} height={144} className="hero-logo" priority />
+        </div>
         <p className="eyebrow">LinK Estimate System</p>
         <h1>操作パネル (MVP)</h1>
         <p className="sub">新規案件作成・Excel同期・明細登録・請求/支払更新・帳票PDF出力。</p>
