@@ -20,3 +20,10 @@
 - Production URL: https://web-b0kl54jbf-h-yoshino-link-8jps-projects.vercel.app
 - Access check: `HTTP 200`
 - Change: Restored local-mode write flow for project/estimate/cost operations and added explicit in-screen local-mode warnings.
+
+## Vercel Deploy (2026-02-17 22:37:49 JST)
+- Project: `h-yoshino-link-8jps-projects/web`
+- Commit: `6759a74`
+- Production URL: https://web-i40jtwmms-h-yoshino-link-8jps-projects.vercel.app
+- Access check: `HTTP 200`
+- Change: Rebuilt project workspace into FileMaker-style dense UI (工事管理画面) while preserving estimate/invoice/payment/document handlers.

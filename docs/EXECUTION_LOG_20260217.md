@@ -74,3 +74,15 @@ Route (app)                                 Size  First Load JS
 ## Git status (short)
  M docs/DEPLOY_LOG_20260217.md
 
+
+## UI/UX redesign (FileMaker-style workspace)
+- Timestamp: 2026-02-17 22:36:22 JST
+- Branch: `codex/handover-20260217` (cherry-picked to `main`)
+- Commit: `a73bd5e` / `6759a74`
+- Files:
+  - `app/web/app/projects/[projectId]/page.tsx`
+  - `app/web/app/globals.css`
+- Build command: `npm --prefix app/web run build`
+- Build result: PASS
+- Deploy URL: https://web-i40jtwmms-h-yoshino-link-8jps-projects.vercel.app
+- Access check: HTTP 200
