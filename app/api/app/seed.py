@@ -7,7 +7,7 @@ from datetime import date
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import Customer, Invoice, Project, ProjectItem, WorkItemMaster
+from .models import Customer, Invoice, Payment, Project, ProjectItem, WorkItemMaster
 
 
 def seed_data(db: Session) -> None:
@@ -53,7 +53,30 @@ def seed_data(db: Session) -> None:
                 invoice_id="INV-001",
                 project_id="P-003",
                 invoice_amount=1254440,
+                invoice_type="一括",
+                billed_at=date.today(),
+                paid_amount=1254440,
+                remaining_amount=0,
+                status="✅入金済",
                 note="seed",
+            )
+        )
+        db.commit()
+
+    if not db.execute(select(Payment.id)).first():
+        db.add(
+            Payment(
+                payment_id="PAY-001",
+                project_id="P-003",
+                vendor_id="1",
+                vendor_name="株式会社テスト解体",
+                work_description="解体工事（既存キッチン解体・撤去）",
+                ordered_amount=85000,
+                paid_amount=85000,
+                remaining_amount=0,
+                status="✅支払済",
+                note="seed",
+                paid_at=date.today(),
             )
         )
         db.commit()

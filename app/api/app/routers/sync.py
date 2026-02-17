@@ -26,5 +26,6 @@ def sync_excel(payload: ExcelSyncRequest, db: Session = Depends(get_db)) -> Exce
         customers_upserted=result.customers_upserted,
         projects_upserted=result.projects_upserted,
         invoices_upserted=result.invoices_upserted,
+        payments_upserted=result.payments_upserted,
         work_items_upserted=result.work_items_upserted,
     )

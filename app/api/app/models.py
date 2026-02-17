@@ -54,7 +54,33 @@ class Invoice(Base):
         String(16), ForeignKey("projects.project_id"), nullable=False, index=True
     )
     invoice_amount: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    invoice_type: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    billed_at: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    paid_amount: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    remaining_amount: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    status: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    project: Mapped[Project] = relationship("Project")
+
+
+class Payment(Base):
+    __tablename__ = "payments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    payment_id: Mapped[str] = mapped_column(String(16), unique=True, index=True, nullable=False)
+    project_id: Mapped[str] = mapped_column(
+        String(16), ForeignKey("projects.project_id"), nullable=False, index=True
+    )
+    vendor_id: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
+    vendor_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    work_description: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    ordered_amount: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    paid_amount: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    remaining_amount: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    status: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    paid_at: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
 
     project: Mapped[Project] = relationship("Project")
 

@@ -151,6 +151,7 @@ def test_excel_sync_endpoint() -> None:
         assert body["customers_upserted"] >= 1
         assert body["projects_upserted"] >= 1
         assert body["invoices_upserted"] >= 1
+        assert body["payments_upserted"] >= 0
         assert body["work_items_upserted"] >= 1
 
         projects_resp = client.get("/api/v1/projects", params={"customer_id": "C-101"})
@@ -158,3 +159,46 @@ def test_excel_sync_endpoint() -> None:
         projects_body = projects_resp.json()
         assert projects_body["total"] >= 1
         assert any(p["project_id"] == "P-101" for p in projects_body["items"])
+
+
+def test_invoice_and_payment_endpoints() -> None:
+    with TestClient(app) as client:
+        invoice_create = client.post(
+            "/api/v1/invoices",
+            json={
+                "project_id": "P-003",
+                "invoice_amount": 300000,
+                "invoice_type": "一括",
+                "paid_amount": 100000,
+                "status": "⚠一部入金",
+            },
+        )
+        assert invoice_create.status_code == 201
+        invoice_body = invoice_create.json()
+        assert invoice_body["invoice_id"].startswith("INV-")
+        assert invoice_body["remaining_amount"] == 200000
+
+        invoice_list = client.get("/api/v1/invoices", params={"project_id": "P-003"})
+        assert invoice_list.status_code == 200
+        invoices = invoice_list.json()
+        assert any(x["invoice_id"] == invoice_body["invoice_id"] for x in invoices)
+
+        payment_create = client.post(
+            "/api/v1/payments",
+            json={
+                "project_id": "P-003",
+                "vendor_name": "テスト業者",
+                "ordered_amount": 120000,
+                "paid_amount": 20000,
+                "status": "❌未支払",
+            },
+        )
+        assert payment_create.status_code == 201
+        payment_body = payment_create.json()
+        assert payment_body["payment_id"].startswith("PAY-")
+        assert payment_body["remaining_amount"] == 100000
+
+        payment_list = client.get("/api/v1/payments", params={"project_id": "P-003"})
+        assert payment_list.status_code == 200
+        payments = payment_list.json()
+        assert any(x["payment_id"] == payment_body["payment_id"] for x in payments)

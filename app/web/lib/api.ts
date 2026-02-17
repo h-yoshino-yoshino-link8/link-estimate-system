@@ -22,6 +22,30 @@ export type ProjectItem = {
   line_total: number;
 };
 
+export type Invoice = {
+  invoice_id: string;
+  project_id: string;
+  invoice_amount: number;
+  invoice_type?: string | null;
+  paid_amount: number;
+  remaining_amount: number;
+  status?: string | null;
+  note?: string | null;
+};
+
+export type Payment = {
+  payment_id: string;
+  project_id: string;
+  vendor_id?: string | null;
+  vendor_name?: string | null;
+  work_description?: string | null;
+  ordered_amount: number;
+  paid_amount: number;
+  remaining_amount: number;
+  status?: string | null;
+  note?: string | null;
+};
+
 export async function getCustomers() {
   const res = await fetch(`${API_BASE}/api/v1/customers`, { cache: "no-store" });
   if (!res.ok) throw new Error("顧客一覧の取得に失敗しました");
@@ -97,6 +121,60 @@ export async function getProjectItems(projectId: string) {
     throw new Error(`明細一覧取得に失敗しました: ${body}`);
   }
   return (await res.json()) as ProjectItem[];
+}
+
+export async function getInvoices(projectId?: string) {
+  const search = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+  const res = await fetch(`${API_BASE}/api/v1/invoices${search}`, { cache: "no-store" });
+  if (!res.ok) throw new Error("請求一覧取得に失敗しました");
+  return (await res.json()) as Invoice[];
+}
+
+export async function createInvoice(payload: {
+  project_id: string;
+  invoice_amount: number;
+  invoice_type?: string;
+  paid_amount?: number;
+  status?: string;
+  note?: string;
+}) {
+  const res = await fetch(`${API_BASE}/api/v1/invoices`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`請求登録に失敗しました: ${body}`);
+  }
+  return (await res.json()) as Invoice;
+}
+
+export async function getPayments(projectId?: string) {
+  const search = projectId ? `?project_id=${encodeURIComponent(projectId)}` : "";
+  const res = await fetch(`${API_BASE}/api/v1/payments${search}`, { cache: "no-store" });
+  if (!res.ok) throw new Error("支払一覧取得に失敗しました");
+  return (await res.json()) as Payment[];
+}
+
+export async function createPayment(payload: {
+  project_id: string;
+  vendor_name?: string;
+  ordered_amount: number;
+  paid_amount?: number;
+  status?: string;
+  note?: string;
+}) {
+  const res = await fetch(`${API_BASE}/api/v1/payments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`支払登録に失敗しました: ${body}`);
+  }
+  return (await res.json()) as Payment;
 }
 
 export async function exportEstimate(projectId: string) {

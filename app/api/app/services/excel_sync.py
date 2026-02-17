@@ -11,7 +11,7 @@ from openpyxl import load_workbook
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ..models import Customer, Invoice, Project, WorkItemMaster
+from ..models import Customer, Invoice, Payment, Project, WorkItemMaster
 from .sanitize import sanitize_sheet_name
 
 
@@ -21,6 +21,7 @@ class SyncResult:
     customers_upserted: int
     projects_upserted: int
     invoices_upserted: int
+    payments_upserted: int
     work_items_upserted: int
 
 
@@ -81,6 +82,7 @@ def sync_from_workbook(db: Session, workbook_path: str) -> SyncResult:
     customers_upserted = 0
     projects_upserted = 0
     invoices_upserted = 0
+    payments_upserted = 0
     work_items_upserted = 0
 
     # 1) 顧客マスタ
@@ -248,6 +250,62 @@ def sync_from_workbook(db: Session, workbook_path: str) -> SyncResult:
             existing.margin_rate = _to_float(margin, 0.0) if margin is not None else None
             work_items_upserted += 1
 
+    # 5) 支払管理
+    if "支払管理" in wb.sheetnames:
+        ws = wb["支払管理"]
+        for row in range(5, ws.max_row + 1):
+            project_id = _to_str(ws.cell(row, 2).value)
+            if not project_id:
+                continue
+
+            payment_id = _to_str(ws.cell(row, 1).value)
+            if not payment_id or payment_id.startswith("="):
+                payment_id = f"PAY-{row - 4:03d}"
+
+            project = db.execute(
+                select(Project).where(Project.project_id == project_id)
+            ).scalar_one_or_none()
+            if project is None:
+                project = Project(
+                    project_id=project_id,
+                    project_sheet_name=sanitize_sheet_name(project_id, f"{project_id}_案件"),
+                    customer_id=placeholder.customer_id,
+                    customer_name=placeholder.customer_name,
+                    project_name=_to_str(ws.cell(row, 5).value) or project_id,
+                    project_status="①リード",
+                    created_at=date.today(),
+                )
+                db.add(project)
+                db.flush()
+
+            existing = db.execute(
+                select(Payment).where(Payment.payment_id == payment_id)
+            ).scalar_one_or_none()
+            if existing is None:
+                existing = Payment(
+                    payment_id=payment_id,
+                    project_id=project_id,
+                )
+                db.add(existing)
+
+            ordered_amount = _to_float(ws.cell(row, 7).value, 0.0)
+            paid_amount = _to_float(ws.cell(row, 9).value, 0.0)
+            remaining_amount = _to_float(ws.cell(row, 10).value, ordered_amount - paid_amount)
+            if remaining_amount < 0:
+                remaining_amount = 0.0
+
+            existing.project_id = project_id
+            existing.vendor_id = _to_str(ws.cell(row, 3).value)
+            existing.vendor_name = _to_str(ws.cell(row, 4).value)
+            existing.work_description = _to_str(ws.cell(row, 5).value)
+            existing.ordered_amount = ordered_amount
+            existing.paid_amount = paid_amount
+            existing.remaining_amount = remaining_amount
+            existing.status = _to_str(ws.cell(row, 11).value)
+            existing.note = _to_str(ws.cell(row, 13).value)
+            existing.paid_at = _to_date(ws.cell(row, 8).value)
+            payments_upserted += 1
+
     db.commit()
 
     return SyncResult(
@@ -255,5 +313,6 @@ def sync_from_workbook(db: Session, workbook_path: str) -> SyncResult:
         customers_upserted=customers_upserted,
         projects_upserted=projects_upserted,
         invoices_upserted=invoices_upserted,
+        payments_upserted=payments_upserted,
         work_items_upserted=work_items_upserted,
     )

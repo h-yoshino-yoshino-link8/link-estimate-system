@@ -58,6 +58,7 @@ class ExcelSyncResponse(BaseModel):
     customers_upserted: int
     projects_upserted: int
     invoices_upserted: int
+    payments_upserted: int
     work_items_upserted: int
 
 
@@ -93,3 +94,53 @@ class ProjectItemRead(BaseModel):
     quantity: float
     unit_price: float
     line_total: float
+
+
+class InvoiceCreate(BaseModel):
+    project_id: str
+    invoice_id: Optional[str] = None
+    invoice_amount: float = Field(default=0.0, ge=0)
+    invoice_type: Optional[str] = None
+    billed_at: Optional[date] = None
+    paid_amount: float = Field(default=0.0, ge=0)
+    status: Optional[str] = None
+    note: Optional[str] = None
+
+
+class InvoiceRead(BaseModel):
+    invoice_id: str
+    project_id: str
+    invoice_amount: float
+    invoice_type: Optional[str] = None
+    billed_at: Optional[date] = None
+    paid_amount: float
+    remaining_amount: float
+    status: Optional[str] = None
+    note: Optional[str] = None
+
+
+class PaymentCreate(BaseModel):
+    project_id: str
+    payment_id: Optional[str] = None
+    vendor_id: Optional[str] = None
+    vendor_name: Optional[str] = None
+    work_description: Optional[str] = None
+    ordered_amount: float = Field(default=0.0, ge=0)
+    paid_amount: float = Field(default=0.0, ge=0)
+    status: Optional[str] = None
+    note: Optional[str] = None
+    paid_at: Optional[date] = None
+
+
+class PaymentRead(BaseModel):
+    payment_id: str
+    project_id: str
+    vendor_id: Optional[str] = None
+    vendor_name: Optional[str] = None
+    work_description: Optional[str] = None
+    ordered_amount: float
+    paid_amount: float
+    remaining_amount: float
+    status: Optional[str] = None
+    note: Optional[str] = None
+    paid_at: Optional[date] = None

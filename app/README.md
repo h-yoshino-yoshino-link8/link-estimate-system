@@ -17,6 +17,10 @@
 - `GET /api/v1/work-items`
 - `GET /api/v1/projects/{project_id}/items`
 - `POST /api/v1/projects/{project_id}/items`
+- `GET /api/v1/invoices`
+- `POST /api/v1/invoices`
+- `GET /api/v1/payments`
+- `POST /api/v1/payments`
 
 ## Local Run (without Docker)
 
