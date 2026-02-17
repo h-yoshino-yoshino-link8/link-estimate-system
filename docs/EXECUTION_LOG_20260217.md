@@ -123,3 +123,17 @@ Route (app)                                 Size  First Load JS
 - Deploy URL: https://web-1zf09po6p-h-yoshino-link-8jps-projects.vercel.app
 - Access check: HTTP 200
 - Note: local generated PDF sample verified as `PDF document, version 1.4, 1 pages`.
+
+## Guided workflow UX + global research baseline
+- Timestamp: 2026-02-18 06:31:02 JST
+- Branch: `main`
+- Commit: `7582ed7`
+- Files:
+  - `app/web/app/projects/[projectId]/page.tsx`
+  - `app/web/app/projects/page.tsx`
+  - `app/web/app/globals.css`
+  - `docs/GLOBAL_UX_FAILURE_RESEARCH_20260218.md`
+  - `docs/UIUX_REBUILD_EXECUTION_PLAN_20260218.md`
+- Build result: PASS
+- Deploy URL: https://web-lashd1j9u-h-yoshino-link-8jps-projects.vercel.app
+- Access check: HTTP 200

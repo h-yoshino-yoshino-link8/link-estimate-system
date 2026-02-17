@@ -51,3 +51,13 @@
   - Local/invalid PDF fallback now emits valid `%PDF-1.4` bytes (A4 landscape).
   - KPI top cards now reflect estimate/invoice/settlement/cost/gross values.
   - Project creation button wording clarified to explicit "保存して案件を作成".
+
+## Vercel Deploy (2026-02-18 06:31:02 JST)
+- Project: `h-yoshino-link-8jps-projects/web`
+- Commit: `7582ed7`
+- Production URL: https://web-lashd1j9u-h-yoshino-link-8jps-projects.vercel.app
+- Access check: `HTTP 200`
+- Changes:
+  - Added guided "next action" UX banner and step progress chips.
+  - Added stricter project create validation/error messaging.
+  - Added global failure-research and rebuild-plan docs for team sharing.
