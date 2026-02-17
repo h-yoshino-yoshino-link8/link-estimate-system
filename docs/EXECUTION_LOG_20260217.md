@@ -1,8 +1,8 @@
 # Execution Log (2026-02-17)
 
-- Timestamp: 2026-02-17 19:03:51 JST
+- Timestamp: 2026-02-17 19:08:31 JST
 - Branch: codex/build-link-estimate-system
-- Head: ea12ee3
+- Head: 535272d
 
 ## Python compile check
 - Command: python3 -m py_compile scripts/build_workbook.py scripts/validate_workbook.py
@@ -75,7 +75,7 @@ app/api/app/main.py:24
    Collecting build traces ...
 
 Route (app)                              Size     First Load JS
-┌ ○ /                                    11 kB          98.1 kB
+┌ ○ /                                    11.2 kB        98.4 kB
 └ ○ /_not-found                          875 B            88 kB
 + First Load JS shared by all            87.1 kB
   ├ chunks/23-c61e312c20c04c5e.js        31.5 kB
@@ -90,5 +90,4 @@ Route (app)                              Size     First Load JS
 ## Git status (short)
  M app/web/app/globals.css
  M app/web/app/page.tsx
- M docs/EXECUTION_LOG_20260217.md
 

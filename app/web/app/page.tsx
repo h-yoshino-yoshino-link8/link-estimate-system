@@ -451,8 +451,29 @@ export default function HomePage() {
           <Image src="/link-logo.svg" alt="LinKロゴ" width={144} height={144} className="hero-logo" priority />
         </div>
         <p className="eyebrow">LinK Estimate System</p>
-        <h1>操作パネル (MVP)</h1>
-        <p className="sub">新規案件作成・Excel同期・明細登録・請求/支払更新・帳票PDF出力。</p>
+        <h1>見積・原価管理ダッシュボード</h1>
+        <p className="sub">案件作成 → 見積作成 → 請求/支払管理 → PDF出力を1画面で実行します。</p>
+      </section>
+
+      <section className="guide-grid">
+        <article className="panel">
+          <h2>このシステムでできること</h2>
+          <div className="items-box">
+            <p className="item-row">1. 新規案件を作成して案件IDを発行</p>
+            <p className="item-row">2. 工事項目を追加して見積金額を積み上げ</p>
+            <p className="item-row">3. 請求・入金、支払・消込の残額を管理</p>
+            <p className="item-row">4. 見積書・領収書PDFを出力</p>
+          </div>
+        </article>
+        <article className="panel">
+          <h2>推奨フロー（最短）</h2>
+          <div className="items-box">
+            <p className="item-row">Step 1: 「新規案件作成」で案件を作る</p>
+            <p className="item-row">Step 2: 「案件明細登録」で見積を作る</p>
+            <p className="item-row">Step 3: 「請求登録/支払登録」で原価管理する</p>
+            <p className="item-row">Step 4: 「見積書PDF出力」で帳票を出す</p>
+          </div>
+        </article>
       </section>
 
       <section className="kpi-grid">
@@ -568,9 +589,9 @@ export default function HomePage() {
         </article>
 
         <article className="panel">
-          <h2>Excel同期</h2>
+          <h2>初期データ取り込み（Excel）</h2>
           <label>
-            Workbook Path（空欄で既定）
+            ローカル開発用パス（通常は空欄）
             <input
               value={syncWorkbookPath}
               onChange={(e) => setSyncWorkbookPath(e.target.value)}
@@ -578,7 +599,7 @@ export default function HomePage() {
             />
           </label>
           <label>
-            Workbook Upload（公開環境向け）
+            Excelファイルを選択（推奨）
             <input
               type="file"
               accept=".xlsx,.xlsm,.xltx,.xltm"
@@ -586,7 +607,7 @@ export default function HomePage() {
             />
           </label>
           <button onClick={onSyncExcel} disabled={working}>
-            Excelから同期
+            取り込み実行
           </button>
         </article>
 

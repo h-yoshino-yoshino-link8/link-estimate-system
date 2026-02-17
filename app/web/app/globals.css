@@ -65,6 +65,13 @@ body {
   opacity: 0.86;
 }
 
+.guide-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  gap: 12px;
+}
+
 .kpi-grid {
   margin-top: 18px;
   display: grid;
@@ -256,6 +263,9 @@ button:disabled {
 }
 
 @media (max-width: 920px) {
+  .guide-grid {
+    grid-template-columns: 1fr;
+  }
   .kpi-grid {
     grid-template-columns: repeat(2, minmax(140px, 1fr));
   }
