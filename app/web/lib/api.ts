@@ -1049,6 +1049,35 @@ export async function createProject(payload: {
   );
 }
 
+// 顧客名から直接案件作成（顧客が未登録なら自動作成）
+export async function createProjectQuick(payload: {
+  customer_name: string;
+  project_name: string;
+  site_address?: string;
+}) {
+  const db = readLocalDb();
+  let customer = db.customers.find(
+    (c) => c.customer_name.trim() === payload.customer_name.trim(),
+  );
+  if (!customer) {
+    const custId = nextId(db.customers.map((c) => c.customer_id), "C");
+    customer = {
+      customer_id: custId,
+      customer_name: payload.customer_name.trim(),
+      contact_name: null,
+      phone: null,
+      status: "取引中",
+    };
+    db.customers.push(customer);
+    writeLocalDb(db);
+  }
+  return localCreateProject({
+    customer_id: customer!.customer_id,
+    project_name: payload.project_name,
+    site_address: payload.site_address,
+  });
+}
+
 export async function updateProjectStatus(projectId: string, status: string) {
   return withFallback(
     async () => {
@@ -1580,32 +1609,36 @@ export function exportEstimateHtml(projectId: string, options?: { staffName?: st
 <head><meta charset="utf-8">
 <title>御見積書 - ${project?.project_name ?? projectId}</title>
 <style>
-  @page { size: A4 landscape; margin: 12mm; }
+  @page { size: A4 landscape; margin: 15mm 20mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:"Hiragino Kaku Gothic Pro","Yu Gothic","Meiryo",sans-serif; font-size:11px; color:#333; line-height:1.5; }
-  .page { page-break-after: always; min-height: 100vh; position: relative; }
+  .page { page-break-after: always; width:257mm; height:180mm; position:relative; overflow:hidden; }
   .page:last-child { page-break-after: auto; }
 
   /* === 表紙 === */
-  .cover { display:flex; flex-direction:column; justify-content:space-between; padding:20px 40px; }
-  .cover-top { display:flex; justify-content:space-between; align-items:flex-start; }
-  .logo { font-size:22px; font-weight:800; color:#1e40af; letter-spacing:2px; }
-  .logo-infinity { font-size:28px; margin-right:6px; }
-  .cover-date { font-size:13px; color:#555; text-align:right; }
-  .cover-center { text-align:center; margin:30px 0 20px; }
-  .cover-title { font-size:36px; font-weight:700; letter-spacing:16px; color:#1e40af; border-bottom:3px double #1e40af; display:inline-block; padding-bottom:12px; }
-  .cover-customer { font-size:24px; font-weight:700; margin:28px 0 8px; text-align:center; }
-  .cover-customer-suffix { font-size:16px; font-weight:400; color:#555; margin-left:8px; }
-  .cover-project-info { text-align:center; font-size:14px; color:#555; margin-bottom:24px; }
-  .cover-total-box { background:#f0f4ff; border:2px solid #1e40af; border-radius:10px; padding:20px 36px; margin:0 auto 30px; max-width:520px; display:flex; justify-content:space-between; align-items:center; }
-  .cover-total-label { font-size:16px; font-weight:600; color:#333; }
-  .cover-total-amount { font-size:34px; font-weight:800; color:#1e40af; }
-  .cover-bottom { display:flex; justify-content:space-between; align-items:flex-end; }
-  .cover-company { font-size:12px; line-height:1.9; }
-  .cover-company-name { font-size:18px; font-weight:700; color:#1e40af; margin-bottom:4px; }
-  .cover-right { display:flex; flex-direction:column; align-items:center; gap:8px; }
-  .cover-staff { font-size:13px; font-weight:500; }
-  .stamp-area { width:80px; height:80px; border:1px dashed #bbb; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#ccc; font-size:11px; }
+  .cover { padding:0; }
+  .cover-header { display:flex; justify-content:space-between; align-items:center; padding:0 0 12px; border-bottom:1px solid #cbd5e1; }
+  .logo { font-size:20px; font-weight:800; color:#1e40af; letter-spacing:2px; }
+  .logo-infinity { font-size:26px; margin-right:4px; }
+  .cover-date { font-size:12px; color:#555; }
+  .cover-main { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100mm; }
+  .cover-title { font-size:32px; font-weight:700; letter-spacing:20px; color:#1e40af; border-bottom:3px double #1e40af; padding:0 24px 10px; margin-bottom:20px; }
+  .cover-to { margin-bottom:16px; text-align:center; }
+  .cover-customer-name { font-size:22px; font-weight:700; display:inline-block; border-bottom:1px solid #333; padding:0 32px 4px; }
+  .cover-customer-suffix { font-size:14px; font-weight:400; color:#555; margin-left:12px; }
+  .cover-project-info { font-size:13px; color:#555; text-align:center; margin-bottom:20px; line-height:1.8; }
+  .cover-total-box { border:2px solid #1e40af; padding:14px 48px; display:inline-flex; align-items:baseline; gap:32px; }
+  .cover-total-label { font-size:14px; font-weight:600; color:#555; }
+  .cover-total-amount { font-size:30px; font-weight:800; color:#1e40af; letter-spacing:2px; }
+  .cover-total-tax { font-size:11px; color:#888; margin-left:4px; }
+  .cover-footer { position:absolute; bottom:0; left:0; right:0; display:flex; justify-content:space-between; align-items:flex-end; border-top:1px solid #cbd5e1; padding-top:14px; }
+  .cover-company { font-size:11px; line-height:2.0; }
+  .cover-company-name { font-size:16px; font-weight:700; color:#1e40af; margin-bottom:2px; }
+  .cover-stamps { display:flex; gap:20px; align-items:flex-end; }
+  .stamp-col { display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .stamp-label { font-size:9px; color:#888; }
+  .stamp-box { width:60px; height:60px; border:1px solid #bbb; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#ccc; font-size:9px; }
+  .cover-staff-name { font-size:11px; color:#333; text-align:center; margin-top:2px; }
 
   /* === テーブル共通 === */
   table { width:100%; border-collapse:collapse; }
@@ -1614,21 +1647,22 @@ export function exportEstimateHtml(projectId: string, options?: { staffName?: st
   tr:nth-child(even):not(.cat-header):not(.cat-subtotal) { background:#fafbfd; }
 
   /* === ページ2: サマリー === */
-  .summary-page { padding:20px 30px; }
-  .page-title { font-size:18px; font-weight:700; color:#1e40af; border-bottom:2px solid #1e40af; padding-bottom:6px; margin-bottom:16px; }
+  .summary-page { padding:0; }
+  .page-title { font-size:16px; font-weight:700; color:#1e40af; border-bottom:2px solid #1e40af; padding-bottom:6px; margin-bottom:16px; }
   .summary-table th { font-size:12px; padding:10px 8px; }
   .summary-table td { font-size:13px; }
   .summary-total td { background:#f0f4ff; font-weight:700; font-size:14px; border-top:2px solid #1e40af; }
 
   /* === ページ3: 明細 === */
-  .detail-page { padding:20px 16px; }
+  .detail-page { padding:0; }
   .detail-note { font-size:10px; color:#666; margin-top:16px; line-height:1.8; }
   .detail-total td { background:#f0f4ff; font-weight:700; font-size:12px; border-top:2px solid #1e40af; }
 
   @media print {
     body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-    .page { page-break-after: always; }
+    .page { page-break-after: always; height:auto; min-height:180mm; }
     .page:last-child { page-break-after: auto; }
+    .cover-footer { position:absolute; }
   }
 </style>
 </head>
@@ -1636,43 +1670,45 @@ export function exportEstimateHtml(projectId: string, options?: { staffName?: st
 
 <!-- ========== ページ1: 表紙 ========== -->
 <div class="page cover">
-  <div class="cover-top">
+  <div class="cover-header">
     <div class="logo"><span class="logo-infinity">&infin;</span>LinK</div>
     <div class="cover-date">${dateStr}</div>
   </div>
 
-  <div>
-    <div class="cover-center">
-      <div class="cover-title">御 見 積 書</div>
-    </div>
-
-    <div class="cover-customer">
-      ${project?.customer_name ?? ""}
+  <div class="cover-main">
+    <div class="cover-title">御 見 積 書</div>
+    <div class="cover-to">
+      <span class="cover-customer-name">${project?.customer_name ?? ""}</span>
       <span class="cover-customer-suffix">御中</span>
     </div>
-
     <div class="cover-project-info">
-      案件名: ${project?.project_name ?? ""}
-      ${project?.site_address ? `<br>現場住所: ${project.site_address}` : ""}
+      件名: ${project?.project_name ?? ""}${project?.site_address ? `<br>現場: ${project.site_address}` : ""}
     </div>
-
     <div class="cover-total-box">
-      <span class="cover-total-label">御見積金額（税抜）</span>
+      <span class="cover-total-label">御見積金額</span>
       <span class="cover-total-amount">${yenFmt(total)}</span>
+      <span class="cover-total-tax">（税抜）</span>
     </div>
   </div>
 
-  <div class="cover-bottom">
+  <div class="cover-footer">
     <div class="cover-company">
       <div class="cover-company-name">株式会社LinK</div>
       代表取締役 吉野 博<br>
-      〒179-0081 東京都練馬区北町2-30-18 バロアール302<br>
-      TEL: 070-8532-0024<br>
-      建設業許可番号: 東京都知事（般-5）第160886号
+      〒134-0081 東京都江戸川区北葛西1丁目2番22号<br>
+      TEL: 03-6825-2464<br>
+      建設業許可取得済
     </div>
-    <div class="cover-right">
-      ${staffName ? `<div class="cover-staff">担当: ${staffName}</div>` : ""}
-      <div class="stamp-area">印</div>
+    <div class="cover-stamps">
+      <div class="stamp-col">
+        <div class="stamp-label">承認</div>
+        <div class="stamp-box"></div>
+      </div>
+      <div class="stamp-col">
+        <div class="stamp-label">担当</div>
+        <div class="stamp-box"></div>
+        ${staffName ? `<div class="cover-staff-name">${staffName}</div>` : ""}
+      </div>
     </div>
   </div>
 </div>

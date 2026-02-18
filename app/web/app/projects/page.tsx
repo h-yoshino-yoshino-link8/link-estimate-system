@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 import {
-  getProjects, getCustomers, createProject,
+  getProjects, createProjectQuick,
   PROJECT_STATUSES,
-  type Project, type Customer,
+  type Project,
 } from "../../lib/api";
 
 function statusBadgeClass(status: string) {
@@ -20,7 +20,6 @@ function statusBadgeClass(status: string) {
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -28,19 +27,17 @@ export default function ProjectsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
 
-  // New project form
-  const [formOpen, setFormOpen] = useState(false);
-  const [newCustomerId, setNewCustomerId] = useState("");
-  const [newName, setNewName] = useState("");
-  const [newAddress, setNewAddress] = useState("");
+  // Quick create
+  const [customerName, setCustomerName] = useState("");
+  const [projectName, setProjectName] = useState("");
+  const [siteAddress, setSiteAddress] = useState("");
   const [creating, setCreating] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [projData, custData] = await Promise.all([getProjects(), getCustomers()]);
+      const projData = await getProjects();
       setProjects(projData.items);
-      setCustomers(custData);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "データ取得失敗");
     } finally {
@@ -50,7 +47,6 @@ export default function ProjectsPage() {
 
   useEffect(() => { void load(); }, []);
 
-  // Status counts
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { all: projects.length };
     for (const p of projects) {
@@ -59,7 +55,6 @@ export default function ProjectsPage() {
     return counts;
   }, [projects]);
 
-  // Filtered projects
   const filtered = useMemo(() => {
     let list = [...projects];
     if (statusFilter !== "all") {
@@ -68,7 +63,6 @@ export default function ProjectsPage() {
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((p) =>
-        p.project_id.toLowerCase().includes(q) ||
         p.project_name.toLowerCase().includes(q) ||
         p.customer_name.toLowerCase().includes(q) ||
         (p.site_address ?? "").toLowerCase().includes(q)
@@ -77,24 +71,23 @@ export default function ProjectsPage() {
     return list;
   }, [projects, statusFilter, search]);
 
-  const handleCreate = async () => {
-    if (!newCustomerId || !newName.trim()) {
-      setMessage("顧客と案件名は必須です");
+  const handleQuickCreate = async () => {
+    if (!customerName.trim() || !projectName.trim()) {
+      setMessage("顧客名と案件名を入力してください");
       return;
     }
     setCreating(true);
     setMessage("");
     try {
-      await createProject({
-        customer_id: newCustomerId,
-        project_name: newName.trim(),
-        site_address: newAddress.trim() || undefined,
+      await createProjectQuick({
+        customer_name: customerName.trim(),
+        project_name: projectName.trim(),
+        site_address: siteAddress.trim() || undefined,
       });
-      setNewName("");
-      setNewAddress("");
-      setFormOpen(false);
+      setCustomerName("");
+      setProjectName("");
+      setSiteAddress("");
       await load();
-      setMessage("案件を作成しました");
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "作成失敗");
     } finally {
@@ -104,56 +97,39 @@ export default function ProjectsPage() {
 
   return (
     <main className="page">
-      {/* Header */}
       <div className="page-header">
-        <div>
-          <h1>案件管理</h1>
-          <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--c-text-3)" }}>
-            全{projects.length}件
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "var(--sp-2)" }}>
-          <button className="btn btn-primary" onClick={() => setFormOpen(!formOpen)}>
-            {formOpen ? "閉じる" : "新規案件"}
-          </button>
-          <button className="btn" onClick={() => void load()} disabled={loading}>更新</button>
-        </div>
+        <h1>案件管理</h1>
+        <button className="btn" onClick={() => void load()} disabled={loading}>更新</button>
       </div>
 
-      {/* New project form */}
-      {formOpen && (
-        <div className="card">
-          <div className="card-title">新規案件作成</div>
-          <div className="form-grid">
-            <div className="form-row">
-              <label>
-                顧客
-                <select value={newCustomerId} onChange={(e) => setNewCustomerId(e.target.value)}>
-                  <option value="">選択してください</option>
-                  {customers.map((c) => (
-                    <option key={c.customer_id} value={c.customer_id}>{c.customer_name}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                案件名
-                <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="例: 練馬区桜台 2F 原状回復" />
-              </label>
-            </div>
-            <label>
-              現場住所
-              <input value={newAddress} onChange={(e) => setNewAddress(e.target.value)} placeholder="東京都..." />
-            </label>
-            <div>
-              <button className="btn btn-primary" onClick={() => void handleCreate()} disabled={creating}>
-                {creating ? "作成中..." : "案件を作成"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Quick create - 1行で案件作成 */}
+      <div className="quick-create">
+        <input
+          value={customerName}
+          onChange={(e) => setCustomerName(e.target.value)}
+          placeholder="顧客名"
+          style={{ flex: "0 0 160px" }}
+        />
+        <input
+          value={projectName}
+          onChange={(e) => setProjectName(e.target.value)}
+          placeholder="案件名（例: 桜台2F 原状回復）"
+          style={{ flex: 1 }}
+          onKeyDown={(e) => { if (e.key === "Enter") void handleQuickCreate(); }}
+        />
+        <input
+          value={siteAddress}
+          onChange={(e) => setSiteAddress(e.target.value)}
+          placeholder="現場住所（任意）"
+          style={{ flex: "0 0 200px" }}
+          onKeyDown={(e) => { if (e.key === "Enter") void handleQuickCreate(); }}
+        />
+        <button className="btn btn-primary" onClick={() => void handleQuickCreate()} disabled={creating}>
+          {creating ? "..." : "作成"}
+        </button>
+      </div>
 
-      {/* Status pipeline filter */}
+      {/* Status filter */}
       <div className="status-pipeline">
         <button
           className={`status-chip ${statusFilter === "all" ? "is-active" : ""}`}
@@ -173,43 +149,41 @@ export default function ProjectsPage() {
       </div>
 
       {/* Search */}
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="案件ID、案件名、顧客名、住所で検索..."
-        style={{ maxWidth: 400 }}
-      />
+      {projects.length > 5 && (
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="検索..."
+          style={{ maxWidth: 300 }}
+        />
+      )}
 
       {/* Projects table */}
       <div className="table-wrap">
         <table className="table">
           <thead>
             <tr>
-              <th>ID</th>
               <th>案件名</th>
               <th>顧客</th>
               <th>現場</th>
               <th>ステータス</th>
-              <th>作成日</th>
-              <th>操作</th>
+              <th style={{ width: 60 }}></th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr className="empty-row">
-                <td colSpan={7}>
-                  {loading ? "読み込み中..." : "該当する案件がありません"}
+                <td colSpan={5}>
+                  {loading ? "読み込み中..." : "案件がありません。上のフォームから作成してください。"}
                 </td>
               </tr>
             ) : (
               filtered.map((p) => (
                 <tr key={p.project_id}>
-                  <td><span className="text-mono">{p.project_id}</span></td>
                   <td style={{ fontWeight: 500 }}>{p.project_name}</td>
                   <td>{p.customer_name}</td>
                   <td style={{ fontSize: 12, color: "var(--c-text-3)" }}>{p.site_address ?? "-"}</td>
                   <td><span className={statusBadgeClass(p.project_status)}>{p.project_status}</span></td>
-                  <td style={{ fontSize: 12 }}>{p.created_at}</td>
                   <td>
                     <Link href={`/projects/${p.project_id}`} className="btn btn-sm" style={{ textDecoration: "none" }}>
                       開く
@@ -223,7 +197,7 @@ export default function ProjectsPage() {
       </div>
 
       {message && (
-        <p className={`message ${message.includes("失敗") || message.includes("必須") ? "message-error" : "message-success"}`}>
+        <p className={`message ${message.includes("失敗") || message.includes("入力") ? "message-error" : "message-success"}`}>
           {message}
         </p>
       )}
