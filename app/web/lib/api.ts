@@ -1612,26 +1612,26 @@ export function exportEstimateHtml(projectId: string, options?: { staffName?: st
   @page { size: A4 landscape; margin: 15mm 20mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:"Hiragino Kaku Gothic Pro","Yu Gothic","Meiryo",sans-serif; font-size:11px; color:#333; line-height:1.5; }
-  .page { page-break-after: always; width:257mm; height:180mm; position:relative; overflow:hidden; }
+  .page { page-break-after: always; width:257mm; overflow:hidden; }
   .page:last-child { page-break-after: auto; }
 
   /* === 表紙 === */
-  .cover { padding:0; }
-  .cover-header { display:flex; justify-content:space-between; align-items:center; padding:0 0 12px; border-bottom:1px solid #cbd5e1; }
+  .cover { display:flex; flex-direction:column; justify-content:space-between; height:180mm; padding:0; }
+  .cover-header { display:flex; justify-content:space-between; align-items:center; padding:0 0 10px; border-bottom:1px solid #cbd5e1; flex-shrink:0; }
   .logo { font-size:20px; font-weight:800; color:#1e40af; letter-spacing:2px; }
   .logo-infinity { font-size:26px; margin-right:4px; }
   .cover-date { font-size:12px; color:#555; }
-  .cover-main { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100mm; }
-  .cover-title { font-size:32px; font-weight:700; letter-spacing:20px; color:#1e40af; border-bottom:3px double #1e40af; padding:0 24px 10px; margin-bottom:20px; }
-  .cover-to { margin-bottom:16px; text-align:center; }
+  .cover-main { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; }
+  .cover-title { font-size:32px; font-weight:700; letter-spacing:20px; color:#1e40af; border-bottom:3px double #1e40af; padding:0 24px 10px; margin-bottom:28px; }
+  .cover-to { margin-bottom:18px; text-align:center; }
   .cover-customer-name { font-size:22px; font-weight:700; display:inline-block; border-bottom:1px solid #333; padding:0 32px 4px; }
   .cover-customer-suffix { font-size:14px; font-weight:400; color:#555; margin-left:12px; }
-  .cover-project-info { font-size:13px; color:#555; text-align:center; margin-bottom:20px; line-height:1.8; }
+  .cover-project-info { font-size:13px; color:#555; text-align:center; margin-bottom:28px; line-height:1.8; }
   .cover-total-box { border:2px solid #1e40af; padding:14px 48px; display:inline-flex; align-items:baseline; gap:32px; }
   .cover-total-label { font-size:14px; font-weight:600; color:#555; }
   .cover-total-amount { font-size:30px; font-weight:800; color:#1e40af; letter-spacing:2px; }
   .cover-total-tax { font-size:11px; color:#888; margin-left:4px; }
-  .cover-footer { position:absolute; bottom:0; left:0; right:0; display:flex; justify-content:space-between; align-items:flex-end; border-top:1px solid #cbd5e1; padding-top:14px; }
+  .cover-footer { display:flex; justify-content:space-between; align-items:flex-end; border-top:1px solid #cbd5e1; padding-top:12px; flex-shrink:0; }
   .cover-company { font-size:11px; line-height:2.0; }
   .cover-company-name { font-size:16px; font-weight:700; color:#1e40af; margin-bottom:2px; }
   .cover-stamps { display:flex; gap:20px; align-items:flex-end; }
@@ -1660,9 +1660,9 @@ export function exportEstimateHtml(projectId: string, options?: { staffName?: st
 
   @media print {
     body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-    .page { page-break-after: always; height:auto; min-height:180mm; }
+    .page { page-break-after: always; }
     .page:last-child { page-break-after: auto; }
-    .cover-footer { position:absolute; }
+    .cover { height:auto; min-height:180mm; }
   }
 </style>
 </head>
