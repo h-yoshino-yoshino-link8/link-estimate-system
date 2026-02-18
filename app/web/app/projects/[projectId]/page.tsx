@@ -94,13 +94,13 @@ export default function ProjectWorkspacePage() {
   const [masterItemId, setMasterItemId] = useState("");
   const [itemQuantity, setItemQuantity] = useState("1");
 
-  const [invoiceAmount, setInvoiceAmount] = useState("100000");
+  const [invoiceAmount, setInvoiceAmount] = useState("");
   const [invoicePaidAmount, setInvoicePaidAmount] = useState("0");
   const [invoiceType, setInvoiceType] = useState("一括");
   const [invoiceBilledAt, setInvoiceBilledAt] = useState(() => new Date().toISOString().slice(0, 10));
 
-  const [paymentVendorName, setPaymentVendorName] = useState("テスト業者");
-  const [paymentOrderedAmount, setPaymentOrderedAmount] = useState("50000");
+  const [paymentVendorName, setPaymentVendorName] = useState("");
+  const [paymentOrderedAmount, setPaymentOrderedAmount] = useState("");
   const [paymentPaidAmount, setPaymentPaidAmount] = useState("0");
 
   const [invoiceToUpdate, setInvoiceToUpdate] = useState("");
@@ -159,25 +159,24 @@ export default function ProjectWorkspacePage() {
   const marginWarning = revenueBase > 0 && grossRate < targetMarginRate;
 
   const stepEstimateDone = projectItems.length > 0;
-  const stepInvoiceDone = invoices.length > 0;
-  const stepInvoiceSettled = invoices.length > 0 && invoiceRemaining <= 0;
+  const stepInvoiceDone = invoices.length > 0 && invoiceRemaining <= 0;
   const stepPaymentDone = payments.length > 0;
 
   const nextAction = useMemo(() => {
     if (!stepEstimateDone) {
       return { step: 1, title: "見積明細を追加してください", detail: "工事カテゴリと項目を選び、数量を入力して追加します。", tab: "estimate" as TabKey };
     }
-    if (!stepInvoiceDone) {
+    if (invoices.length === 0) {
       return { step: 2, title: "請求を登録してください", detail: "請求額を入力して登録します。", tab: "invoice" as TabKey };
     }
-    if (!stepInvoiceSettled) {
+    if (!stepInvoiceDone) {
       return { step: 2, title: "入金反映を完了してください", detail: "入金額を更新して未入金残を0にします。", tab: "invoice" as TabKey };
     }
     if (!stepPaymentDone) {
       return { step: 3, title: "業者支払を登録してください", detail: "業者名と発注額を入力して登録します。", tab: "payment" as TabKey };
     }
     return { step: 4, title: "書類発行・連絡へ進めます", detail: "見積書/領収書PDFの出力と請求メール文面作成を実行できます。", tab: "docs" as TabKey };
-  }, [stepEstimateDone, stepInvoiceDone, stepInvoiceSettled, stepPaymentDone]);
+  }, [stepEstimateDone, stepInvoiceDone, stepPaymentDone, invoices.length]);
 
   /* --- Data loading --- */
   const loadWorkspace = async () => {
@@ -280,6 +279,9 @@ export default function ProjectWorkspacePage() {
   const showMsg = (text: string, type: "success" | "error" | "info" = "info") => {
     setMessage(text);
     setMessageType(type);
+    if (type === "success") {
+      setTimeout(() => setMessage(""), 4000);
+    }
   };
 
   const showPreview = (blob: Blob, title: string) => {
@@ -318,6 +320,7 @@ export default function ProjectWorkspacePage() {
       await loadWorkspace();
       appendAuditLog("見積", "明細追加", `${selectedMaster.item_name} × ${itemQuantity}${selectedMaster.unit ?? "式"} = ${yen(previewLineTotal)}`);
       showMsg(`「${selectedMaster.item_name}」を追加しました（${yen(previewLineTotal)}）`, "success");
+      setItemQuantity("1");
     } catch (error) {
       showMsg(error instanceof Error ? error.message : "明細追加に失敗しました", "error");
     } finally {
@@ -340,6 +343,8 @@ export default function ProjectWorkspacePage() {
       setInvoiceIdForPdf(created.invoice_id);
       appendAuditLog("請求", "請求登録", `${created.invoice_id} / 請求額 ${yen(created.invoice_amount)}`);
       showMsg(`請求を登録しました: ${created.invoice_id}`, "success");
+      setInvoiceAmount("");
+      setInvoicePaidAmount("0");
     } catch (error) {
       showMsg(error instanceof Error ? error.message : "請求登録に失敗しました", "error");
     } finally {
@@ -361,6 +366,9 @@ export default function ProjectWorkspacePage() {
       await loadWorkspace();
       appendAuditLog("支払", "支払登録", `${created.payment_id} / 発注額 ${yen(created.ordered_amount)}`);
       showMsg(`支払を登録しました: ${created.payment_id}`, "success");
+      setPaymentVendorName("");
+      setPaymentOrderedAmount("");
+      setPaymentPaidAmount("0");
     } catch (error) {
       showMsg(error instanceof Error ? error.message : "支払登録に失敗しました", "error");
     } finally {
@@ -567,9 +575,7 @@ export default function ProjectWorkspacePage() {
       <div className="step-progress">
         <span className={`step-item ${stepEstimateDone ? "is-done" : nextAction.step === 1 ? "is-current" : ""}`}>1. 見積</span>
         <span className="step-connector" />
-        <span className={`step-item ${stepInvoiceDone ? "is-done" : nextAction.step === 2 ? "is-current" : ""}`}>2. 請求</span>
-        <span className="step-connector" />
-        <span className={`step-item ${stepInvoiceSettled ? "is-done" : ""}`}>2b. 入金</span>
+        <span className={`step-item ${stepInvoiceDone ? "is-done" : nextAction.step === 2 ? "is-current" : ""}`}>2. 請求・入金</span>
         <span className="step-connector" />
         <span className={`step-item ${stepPaymentDone ? "is-done" : nextAction.step === 3 ? "is-current" : ""}`}>3. 支払</span>
         <span className="step-connector" />
@@ -591,13 +597,13 @@ export default function ProjectWorkspacePage() {
       {/* Tabs */}
       <div className="tab-row">
         <button className={`tab-btn ${activeTab === "estimate" ? "is-active" : ""}`} onClick={() => setActiveTab("estimate")}>
-          見積 <span className="tab-badge">{projectItems.length}</span>
+          見積 {projectItems.length > 0 ? <span className="tab-badge">{projectItems.length}</span> : null}
         </button>
         <button className={`tab-btn ${activeTab === "invoice" ? "is-active" : ""}`} onClick={() => setActiveTab("invoice")}>
-          請求・入金 <span className="tab-badge">{invoices.length}</span>
+          請求・入金 {invoices.length > 0 ? <span className="tab-badge">{invoices.length}</span> : null}
         </button>
         <button className={`tab-btn ${activeTab === "payment" ? "is-active" : ""}`} onClick={() => setActiveTab("payment")}>
-          支払 <span className="tab-badge">{payments.length}</span>
+          支払 {payments.length > 0 ? <span className="tab-badge">{payments.length}</span> : null}
         </button>
         <button className={`tab-btn ${activeTab === "docs" ? "is-active" : ""}`} onClick={() => setActiveTab("docs")}>
           書類・連絡
@@ -609,7 +615,7 @@ export default function ProjectWorkspacePage() {
         <div className="animate-in" style={{ display: "grid", gap: "var(--sp-5)" }}>
           {/* Item Add Card */}
           <div className="card">
-            <h3 className="card-title"><span className="step-num">1</span> 工事項目を見積に追加</h3>
+            <h3 className="card-title">工事項目を見積に追加</h3>
             <p className="card-desc">
               カテゴリを選んで工事項目を絞り込み、数量を入力してください。
               追加ボタンを押すと見積明細に反映されます。
@@ -783,7 +789,7 @@ export default function ProjectWorkspacePage() {
                   </label>
                   <label>
                     <span className="label-text">請求額</span>
-                    <input value={invoiceAmount} onChange={(e) => setInvoiceAmount(e.target.value)} />
+                    <input type="number" placeholder="請求額を入力" value={invoiceAmount} onChange={(e) => setInvoiceAmount(e.target.value)} />
                   </label>
                 </div>
                 <div className="form-row-2">
@@ -804,37 +810,40 @@ export default function ProjectWorkspacePage() {
 
             <div className="subcard">
               <h4 className="subcard-title">入金を反映する</h4>
-              <div className="form-grid">
-                <label>
-                  <span className="label-text">対象の請求</span>
-                  <select
-                    value={invoiceToUpdate}
-                    onChange={(e) => {
-                      setInvoiceToUpdate(e.target.value);
-                      const matched = invoices.find((x) => x.invoice_id === e.target.value);
-                      if (matched) setInvoicePaidToUpdate(String(matched.paid_amount));
-                    }}
-                    disabled={working || invoices.length === 0}
-                  >
-                    {invoices.length === 0 ? <option value="">請求がまだありません</option> : null}
-                    {invoices.map((inv) => (
-                      <option key={inv.invoice_id} value={inv.invoice_id}>
-                        {inv.invoice_id} — 未回収 {yen(inv.remaining_amount)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span className="label-text">入金額（累計）</span>
-                  <input value={invoicePaidToUpdate} onChange={(e) => setInvoicePaidToUpdate(e.target.value)} />
-                </label>
-                <button className="btn btn-primary" onClick={onSettleInvoice} disabled={working || !invoiceToUpdate}>
-                  入金を反映
-                </button>
-                {activeInvoice ? (
-                  <p className="form-help">現在の状態: {activeInvoice.status ?? "-"}</p>
-                ) : null}
-              </div>
+              {invoices.length === 0 ? (
+                <p className="form-help">まず請求を登録してください</p>
+              ) : (
+                <div className="form-grid">
+                  <label>
+                    <span className="label-text">対象の請求</span>
+                    <select
+                      value={invoiceToUpdate}
+                      onChange={(e) => {
+                        setInvoiceToUpdate(e.target.value);
+                        const matched = invoices.find((x) => x.invoice_id === e.target.value);
+                        if (matched) setInvoicePaidToUpdate(String(matched.paid_amount));
+                      }}
+                      disabled={working}
+                    >
+                      {invoices.map((inv) => (
+                        <option key={inv.invoice_id} value={inv.invoice_id}>
+                          {inv.invoice_id} — 未回収 {yen(inv.remaining_amount)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="label-text">入金額（累計）</span>
+                    <input value={invoicePaidToUpdate} onChange={(e) => setInvoicePaidToUpdate(e.target.value)} />
+                  </label>
+                  <button className="btn btn-primary" onClick={onSettleInvoice} disabled={working || !invoiceToUpdate}>
+                    入金を反映
+                  </button>
+                  {activeInvoice ? (
+                    <p className="form-help">現在の状態: {activeInvoice.status ?? "-"}</p>
+                  ) : null}
+                </div>
+              )}
             </div>
           </div>
 
@@ -900,12 +909,12 @@ export default function ProjectWorkspacePage() {
               <div className="form-grid">
                 <label>
                   <span className="label-text">業者名</span>
-                  <input value={paymentVendorName} onChange={(e) => setPaymentVendorName(e.target.value)} />
+                  <input placeholder="業者名を入力" value={paymentVendorName} onChange={(e) => setPaymentVendorName(e.target.value)} />
                 </label>
                 <div className="form-row-2">
                   <label>
                     <span className="label-text">発注額</span>
-                    <input value={paymentOrderedAmount} onChange={(e) => setPaymentOrderedAmount(e.target.value)} />
+                    <input type="number" placeholder="発注額を入力" value={paymentOrderedAmount} onChange={(e) => setPaymentOrderedAmount(e.target.value)} />
                   </label>
                   <label>
                     <span className="label-text">支払済み額</span>
@@ -920,37 +929,40 @@ export default function ProjectWorkspacePage() {
 
             <div className="subcard">
               <h4 className="subcard-title">支払を消込する</h4>
-              <div className="form-grid">
-                <label>
-                  <span className="label-text">対象の支払</span>
-                  <select
-                    value={paymentToUpdate}
-                    onChange={(e) => {
-                      setPaymentToUpdate(e.target.value);
-                      const matched = payments.find((x) => x.payment_id === e.target.value);
-                      if (matched) setPaymentPaidToUpdate(String(matched.paid_amount));
-                    }}
-                    disabled={working || payments.length === 0}
-                  >
-                    {payments.length === 0 ? <option value="">支払がまだありません</option> : null}
-                    {payments.map((pay) => (
-                      <option key={pay.payment_id} value={pay.payment_id}>
-                        {pay.vendor_name} — 未払い {yen(pay.remaining_amount)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span className="label-text">支払額（累計）</span>
-                  <input value={paymentPaidToUpdate} onChange={(e) => setPaymentPaidToUpdate(e.target.value)} />
-                </label>
-                <button className="btn btn-primary" onClick={onSettlePayment} disabled={working || !paymentToUpdate}>
-                  消込を反映
-                </button>
-                {activePayment ? (
-                  <p className="form-help">現在の状態: {activePayment.status ?? "-"}</p>
-                ) : null}
-              </div>
+              {payments.length === 0 ? (
+                <p className="form-help">まず支払を登録してください</p>
+              ) : (
+                <div className="form-grid">
+                  <label>
+                    <span className="label-text">対象の支払</span>
+                    <select
+                      value={paymentToUpdate}
+                      onChange={(e) => {
+                        setPaymentToUpdate(e.target.value);
+                        const matched = payments.find((x) => x.payment_id === e.target.value);
+                        if (matched) setPaymentPaidToUpdate(String(matched.paid_amount));
+                      }}
+                      disabled={working}
+                    >
+                      {payments.map((pay) => (
+                        <option key={pay.payment_id} value={pay.payment_id}>
+                          {pay.vendor_name} — 未払い {yen(pay.remaining_amount)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span className="label-text">支払額（累計）</span>
+                    <input value={paymentPaidToUpdate} onChange={(e) => setPaymentPaidToUpdate(e.target.value)} />
+                  </label>
+                  <button className="btn btn-primary" onClick={onSettlePayment} disabled={working || !paymentToUpdate}>
+                    消込を反映
+                  </button>
+                  {activePayment ? (
+                    <p className="form-help">現在の状態: {activePayment.status ?? "-"}</p>
+                  ) : null}
+                </div>
+              )}
             </div>
           </div>
 
@@ -994,7 +1006,7 @@ export default function ProjectWorkspacePage() {
       {activeTab === "docs" ? (
         <div className="animate-in" style={{ display: "grid", gap: "var(--sp-5)" }}>
           <div className="card">
-            <h3 className="card-title"><span className="step-num">4</span> 書類発行・連絡</h3>
+            <h3 className="card-title">書類発行・連絡</h3>
             <p className="card-desc">帳票PDFを出力するとダウンロードされ、下のプレビューに表示されます。</p>
 
             <div className="doc-actions mb-4">
@@ -1022,25 +1034,29 @@ export default function ProjectWorkspacePage() {
               </label>
             ) : null}
 
-            <div className="preview-meta mt-4">
-              <strong>{previewTitle || "帳票プレビュー"}</strong>
-              <span>{previewTitle ? "A4横" : "PDFを出力するとここに表示されます"}</span>
-            </div>
-            <div className="preview-shell">
-              {previewLoading ? (
-                <p className="text-muted">帳票を生成中...</p>
-              ) : previewUrl ? (
-                <iframe title={previewTitle || "帳票プレビュー"} src={previewUrl} />
-              ) : (
-                <p className="text-muted" style={{ fontSize: 13 }}>見積書または領収書を出力すると、ここにプレビューが表示されます</p>
-              )}
-            </div>
+            {previewUrl ? (
+              <>
+                <div className="preview-meta mt-4">
+                  <strong>{previewTitle}</strong>
+                  <span>A4横</span>
+                </div>
+                <div className="preview-shell">
+                  {previewLoading ? (
+                    <p className="text-muted">帳票を生成中...</p>
+                  ) : (
+                    <iframe title={previewTitle || "帳票プレビュー"} src={previewUrl} />
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="form-help mt-3">帳票PDFを出力すると、ここにプレビューが表示されます。</p>
+            )}
           </div>
 
           {/* Audit Log */}
           <div className="card">
             <button className="audit-toggle" onClick={() => setShowAuditLog(!showAuditLog)}>
-              {showAuditLog ? "▼" : "▶"} 操作履歴 <span className="count-badge">{auditLogs.length}件</span>
+              {showAuditLog ? "操作履歴を閉じる" : `操作履歴を表示（${auditLogs.length}件）`}
             </button>
             {showAuditLog ? (
               auditLogs.length === 0 ? (

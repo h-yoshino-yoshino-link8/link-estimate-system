@@ -441,3 +441,62 @@ button { border: none; background: none; cursor: pointer; font-family: var(--fon
   .tab-row { overflow-x: auto; }
   .projects-layout { grid-template-columns: 1fr; }
 }
+
+/* ============================================================
+   Dashboard Page
+   ============================================================ */
+
+.dash-header {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4);
+}
+.dash-header h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.dash-header-sub { margin: 2px 0 0; font-size: 13px; color: var(--c-text-secondary); }
+
+.dash-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-3); }
+
+.dash-section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5); }
+
+.progress-track { height: 8px; background: var(--c-bg); border-radius: var(--r-full); overflow: hidden; }
+.progress-fill { height: 100%; border-radius: var(--r-full); background: var(--c-primary); transition: width 0.3s; }
+.progress-fill-cyan { background: #06b6d4; }
+
+.chart-bar-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(40px, 1fr));
+  gap: var(--sp-1); align-items: end; height: 120px;
+}
+.chart-bar-col {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  height: 100%; justify-content: flex-end;
+}
+.chart-bar-fill {
+  width: 100%; min-height: 2px; border-radius: var(--r-sm) var(--r-sm) 0 0;
+  background: var(--c-primary); transition: height 0.3s;
+}
+.chart-bar-label { font-size: 10px; color: var(--c-text-muted); white-space: nowrap; }
+.chart-bar-value { font-size: 10px; color: var(--c-text-secondary); font-family: var(--font-mono); }
+
+.alert-item {
+  display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3);
+  border-radius: var(--r-sm); border: 1px solid var(--c-warning-border);
+  background: var(--c-warning-bg); font-size: 13px;
+}
+
+.stat-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: var(--sp-2) 0; border-bottom: 1px solid var(--c-border); font-size: 13px;
+}
+.stat-row:last-child { border-bottom: none; }
+.stat-label { color: var(--c-text-secondary); }
+.stat-value { font-weight: 600; color: var(--c-text); }
+
+.growth-plus { color: var(--c-success); }
+.growth-minus { color: var(--c-error); }
+
+/* --- Dashboard Responsive --- */
+@media (max-width: 1024px) {
+  .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .dash-section-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 680px) {
+  .dash-kpi-grid { grid-template-columns: 1fr; }
+}

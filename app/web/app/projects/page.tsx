@@ -33,7 +33,7 @@ export default function ProjectsPage() {
   const [projectName, setProjectName] = useState("");
   const [siteAddress, setSiteAddress] = useState("");
   const [ownerName, setOwnerName] = useState("吉野博");
-  const [marginRate, setMarginRate] = useState("0.25");
+  const [marginRate, setMarginRate] = useState("25");
   const [statusFilter, setStatusFilter] = useState("all");
 
   const load = async () => {
@@ -92,8 +92,8 @@ export default function ProjectsPage() {
       errors.customerId = "顧客を選択してください";
     }
     const margin = Number(marginRate || "0");
-    if (!Number.isFinite(margin) || margin < 0 || margin > 1) {
-      errors.marginRate = "0〜1 の範囲で入力してください（例: 0.25）";
+    if (!Number.isFinite(margin) || margin < 0 || margin > 100) {
+      errors.marginRate = "0〜100 の範囲で入力してください（例: 25）";
     }
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -115,13 +115,14 @@ export default function ProjectsPage() {
         project_name: projectName,
         site_address: siteAddress,
         owner_name: ownerName,
-        target_margin_rate: Number(marginRate || "0.25"),
+        target_margin_rate: Number(marginRate || "25") / 100,
       });
       await load();
       setProjectName("");
       setSiteAddress("");
       setMessage(`案件を作成しました: ${created.project_id}${isLocalModeEnabled() ? "（ローカル保存）" : ""}`);
       setMessageType("success");
+      setTimeout(() => setMessage(""), 4000);
       router.push(`/projects/${created.project_id}`);
     } catch (error) {
       const detail = error instanceof Error ? error.message.trim() : "";
@@ -165,11 +166,15 @@ export default function ProjectsPage() {
                 onChange={(e) => { setCustomerId(e.target.value); setFieldErrors((prev) => ({ ...prev, customerId: "" })); }}
                 disabled={working || loading}
               >
-                {customers.map((c) => (
-                  <option key={c.customer_id} value={c.customer_id}>
-                    {c.customer_id} / {c.customer_name}
-                  </option>
-                ))}
+                {loading ? (
+                  <option value="">読み込み中...</option>
+                ) : (
+                  customers.map((c) => (
+                    <option key={c.customer_id} value={c.customer_id}>
+                      {c.customer_name}（{c.customer_id}）
+                    </option>
+                  ))
+                )}
               </select>
               {fieldErrors.customerId ? <span className="field-error">{fieldErrors.customerId}</span> : null}
             </label>
@@ -196,11 +201,11 @@ export default function ProjectsPage() {
                 <input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
               </label>
               <label>
-                <span className="label-text">目標粗利率 <span className="required-mark">*</span></span>
+                <span className="label-text">目標粗利率 (%) <span className="required-mark">*</span></span>
                 <input
                   value={marginRate}
                   onChange={(e) => { setMarginRate(e.target.value); setFieldErrors((prev) => ({ ...prev, marginRate: "" })); }}
-                  placeholder="0.25"
+                  placeholder="25"
                   className={fieldErrors.marginRate ? "input-error" : ""}
                 />
                 {fieldErrors.marginRate ? <span className="field-error">{fieldErrors.marginRate}</span> : null}
@@ -221,15 +226,17 @@ export default function ProjectsPage() {
             <h2 className="card-title" style={{ margin: 0 }}>
               案件一覧 <span className="count-badge">{filteredProjects.length}件</span>
             </h2>
-            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-              ステータス
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: "auto" }}>
-                <option value="all">すべて</option>
-                {statuses.map((status) => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-            </label>
+            {statuses.length > 0 && (
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                ステータス
+                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: "auto" }}>
+                  <option value="all">すべて</option>
+                  {statuses.map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
 
           {filteredProjects.length === 0 ? (

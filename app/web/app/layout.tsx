@@ -1,16 +1,18 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import "./globals.css";
-import type { Metadata } from "next";
 import RuntimeModeIndicator from "../components/runtime-mode-indicator";
 
-export const metadata: Metadata = {
-  title: "LinK Estimate OS",
-  description: "経営・見積・会計を案件軸でつなぐ業務OS",
-};
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   return (
     <html lang="ja">
+      <head>
+        <title>LinK Estimate OS</title>
+        <meta name="description" content="経営・見積・会計を案件軸でつなぐ業務OS" />
+      </head>
       <body>
         <header className="topbar">
           <div className="topbar-inner">
@@ -21,8 +23,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="brand-text">LinK</span>
             </Link>
             <nav className="top-nav" aria-label="primary">
-              <Link href="/">経営ダッシュボード</Link>
-              <Link href="/projects">案件管理</Link>
+              <Link href="/" className={pathname === "/" ? "is-active" : ""}>
+                経営ダッシュボード
+              </Link>
+              <Link href="/projects" className={pathname.startsWith("/projects") ? "is-active" : ""}>
+                案件管理
+              </Link>
             </nav>
             <RuntimeModeIndicator />
           </div>

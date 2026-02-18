@@ -107,105 +107,131 @@ export default function ExecutiveDashboardPage() {
 
   return (
     <main className="page">
-      <section className="hero">
-        <p className="eyebrow">Management View</p>
-        <h1>経営ダッシュボード</h1>
-        <p className="sub">
-          売上・資金・案件進捗・未入金リスクを1画面で把握し、次の意思決定につなげる画面です。
-        </p>
-        <div className="hero-actions">
-          <Link href="/projects" className="link-btn">
+      {/* Header */}
+      <div className="dash-header">
+        <div>
+          <h1>経営ダッシュボード</h1>
+          <p className="dash-header-sub">売上・資金・案件進捗を一画面で把握する経営ダッシュボード</p>
+        </div>
+        <div style={{ display: "flex", gap: "var(--sp-2)" }}>
+          <Link href="/projects" className="btn btn-primary" style={{ textDecoration: "none" }}>
             案件一覧を開く
           </Link>
-          <button onClick={() => void load()} disabled={loading}>
+          <button className="btn" onClick={() => void load()} disabled={loading}>
             最新に更新
           </button>
         </div>
-      </section>
+      </div>
 
-      <section className="kpi-grid">
-        <article className="kpi-card">
+      {/* KPI Cards */}
+      <div className="dash-kpi-grid">
+        <div className="kpi-card">
           <p className="kpi-label">今月売上</p>
           <p className="kpi-value">{yen(overview?.current_month_sales ?? 0)}</p>
-          <p className="kpi-note">当月請求ベース</p>
-        </article>
-        <article className="kpi-card">
+          <p className="kpi-sub">当月請求ベース</p>
+        </div>
+        <div className="kpi-card">
           <p className="kpi-label">通年売上（YTD）</p>
           <p className="kpi-value">{yen(overview?.ytd_sales ?? 0)}</p>
-          <p className="kpi-note">年初からの累計</p>
-        </article>
-        <article className="kpi-card">
+          <p className="kpi-sub">年初からの累計</p>
+        </div>
+        <div className="kpi-card">
           <p className="kpi-label">前年比成長率</p>
-          <p className={`kpi-value ${growthRate >= 0 ? "kpi-growth-plus" : "kpi-growth-minus"}`}>{growthText}</p>
-          <p className="kpi-note">前年同期比</p>
-        </article>
-        <article className="kpi-card">
+          <p className={`kpi-value ${growthRate >= 0 ? "growth-plus" : "growth-minus"}`}>{growthText}</p>
+          <p className="kpi-sub">前年同期比</p>
+        </div>
+        <div className="kpi-card">
           <p className="kpi-label">稼働案件数</p>
           <p className="kpi-value">{overview?.active_project_count ?? 0}件</p>
-          <p className="kpi-note">進行中案件</p>
-        </article>
-      </section>
+          <p className="kpi-sub">進行中案件</p>
+        </div>
+      </div>
 
-      <section className="dash-grid">
-        <article className="panel">
-          <h2>売上推移（今年）</h2>
-          <div className="chart-grid">
+      {/* Section Grid: Chart + Finance Health */}
+      <div className="dash-section-grid">
+        {/* Sales Chart */}
+        <div className="card">
+          <h2 className="card-title">売上推移（今年）</h2>
+          <div className="chart-bar-grid">
             {monthlySalesPoints.map((point) => (
-              <div key={point.month} className="chart-col">
-                <div className="chart-track">
-                  <span style={{ height: `${Math.max((point.amount / monthlyPeak) * 100, 2)}%` }} className="chart-bar" />
-                </div>
-                <p className="chart-label">{point.month}</p>
-                <p className="chart-value">{yen(point.amount)}</p>
+              <div key={point.month} className="chart-bar-col">
+                <div
+                  className="chart-bar-fill"
+                  style={{ height: `${Math.max((point.amount / monthlyPeak) * 100, 2)}%` }}
+                />
+                <span className="chart-bar-label">{point.month}</span>
+                <span className="chart-bar-value">{yen(point.amount)}</span>
               </div>
             ))}
           </div>
-        </article>
+        </div>
 
-        <article className="panel">
-          <h2>資金/回収の健全性</h2>
-          <div className="items-box">
-            <p className="item-row">売掛残（未回収）: {yen(overview?.receivable_balance ?? 0)}</p>
-            <p className="item-row">買掛残（未払）: {yen(overview?.payable_balance ?? 0)}</p>
-            <p className="item-row">全期間売上: {yen(overview?.all_time_sales ?? 0)}</p>
-            <p className="item-row">期限超過請求: {overdueInvoices.length}件 / {yen(overdueAmount)}</p>
-          </div>
-          <div className="metric-block">
-            <div className="metric-row">
-              <span>請求回収率</span>
-              <strong>{invoiceCollectionRate.toFixed(1)}%</strong>
+        {/* Finance Health */}
+        <div className="card">
+          <h2 className="card-title">資金/回収の健全性</h2>
+          <div>
+            <div className="stat-row">
+              <span className="stat-label">売掛残（未回収）</span>
+              <span className="stat-value">{yen(overview?.receivable_balance ?? 0)}</span>
             </div>
-            <div className="status-track">
-              <span style={{ width: `${invoiceCollectionRate}%` }} />
+            <div className="stat-row">
+              <span className="stat-label">買掛残（未払）</span>
+              <span className="stat-value">{yen(overview?.payable_balance ?? 0)}</span>
             </div>
-          </div>
-          <div className="metric-block">
-            <div className="metric-row">
-              <span>支払消込率</span>
-              <strong>{paymentSettlementRate.toFixed(1)}%</strong>
+            <div className="stat-row">
+              <span className="stat-label">全期間売上</span>
+              <span className="stat-value">{yen(overview?.all_time_sales ?? 0)}</span>
             </div>
-            <div className="status-track status-track-cyan">
-              <span style={{ width: `${paymentSettlementRate}%` }} />
+            <div className="stat-row">
+              <span className="stat-label">期限超過請求</span>
+              <span className="stat-value">{overdueInvoices.length}件 / {yen(overdueAmount)}</span>
             </div>
           </div>
-        </article>
+          <div style={{ marginTop: "var(--sp-4)", display: "grid", gap: "var(--sp-3)" }}>
+            <div>
+              <div className="stat-row" style={{ borderBottom: "none", paddingBottom: 0 }}>
+                <span className="stat-label">請求回収率</span>
+                <span className="stat-value">{invoiceCollectionRate.toFixed(1)}%</span>
+              </div>
+              <div className="progress-track">
+                <div className="progress-fill" style={{ width: `${invoiceCollectionRate}%` }} />
+              </div>
+            </div>
+            <div>
+              <div className="stat-row" style={{ borderBottom: "none", paddingBottom: 0 }}>
+                <span className="stat-label">支払消込率</span>
+                <span className="stat-value">{paymentSettlementRate.toFixed(1)}%</span>
+              </div>
+              <div className="progress-track">
+                <div className="progress-fill progress-fill-cyan" style={{ width: `${paymentSettlementRate}%` }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        <article className="panel">
-          <h2>要対応アラート</h2>
-          <div className="items-box">
-            {overdueInvoices.length === 0 ? <p className="item-row">期限超過の請求はありません</p> : null}
+      {/* Alerts */}
+      <div className="card">
+        <h2 className="card-title">要対応アラート</h2>
+        {overdueInvoices.length === 0 ? (
+          <p className="text-muted" style={{ fontSize: 13 }}>期限超過の請求はありません</p>
+        ) : (
+          <div style={{ display: "grid", gap: "var(--sp-2)" }}>
             {overdueInvoices.slice(0, 6).map(({ inv, due }) => (
-              <p key={inv.invoice_id} className="item-row">
-                {inv.invoice_id} / 案件 {inv.project_id} / 期日 {due ? ymd(due) : "-"} / 残 {yen(inv.remaining_amount)}
-              </p>
+              <div key={inv.invoice_id} className="alert-item">
+                <span>{inv.invoice_id} / 案件 {inv.project_id} / 期日 {due ? ymd(due) : "-"} / 残 {yen(inv.remaining_amount)}</span>
+              </div>
             ))}
           </div>
-          <p className="item-row">対応は「案件管理 → 該当案件」で請求/入金更新を実行してください。</p>
-        </article>
-      </section>
+        )}
+        <p className="text-muted" style={{ fontSize: 12, marginTop: "var(--sp-3)" }}>
+          対応は「案件管理 → 該当案件」で請求/入金更新を実行してください。
+        </p>
+      </div>
 
-      <section className="panel">
-        <h2>稼働案件（どこが動いているか）</h2>
+      {/* Active Projects Table */}
+      <div className="card">
+        <h2 className="card-title">稼働案件（どこが動いているか）</h2>
         <div className="table-wrap">
           <table className="table">
             <thead>
@@ -225,7 +251,7 @@ export default function ExecutiveDashboardPage() {
                   <td>
                     {project.project_id}
                     <br />
-                    <span className="cell-sub">{project.project_name}</span>
+                    <span className="text-muted">{project.project_name}</span>
                   </td>
                   <td>{project.customer_name}</td>
                   <td>{project.project_status}</td>
@@ -233,7 +259,7 @@ export default function ExecutiveDashboardPage() {
                   <td>{yen(project.payment_total_amount)}</td>
                   <td>{yen(project.gross_estimate)}</td>
                   <td>
-                    <Link href={`/projects/${project.project_id}`} className="inline-link">
+                    <Link href={`/projects/${project.project_id}`} className="btn btn-sm btn-primary" style={{ textDecoration: "none" }}>
                       案件を開く
                     </Link>
                   </td>
@@ -242,7 +268,7 @@ export default function ExecutiveDashboardPage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </div>
 
       {message ? <p className="message">{message}</p> : null}
     </main>
