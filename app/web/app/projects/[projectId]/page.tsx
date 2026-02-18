@@ -32,6 +32,12 @@ function yen(value: number) {
   return `¥${Math.round(n).toLocaleString()}`;
 }
 
+function calcLineTotal(row: { unit_price?: number; quantity?: number; line_total?: number }): number {
+  const lt = Number(row.line_total);
+  if (Number.isFinite(lt) && lt !== 0) return lt;
+  return (Number(row.unit_price) || 0) * (Number(row.quantity) || 0);
+}
+
 type AuditLogEntry = {
   id: string;
   project_id: string;
@@ -118,7 +124,7 @@ export default function ProjectWorkspacePage() {
 
   /* --- Derived values --- */
   const estimateTotal = useMemo(
-    () => projectItems.reduce((sum, row) => sum + Number(row.line_total || 0), 0),
+    () => projectItems.reduce((sum, row) => sum + calcLineTotal(row), 0),
     [projectItems],
   );
   const invoiceTotal = useMemo(
@@ -737,7 +743,7 @@ export default function ProjectWorkspacePage() {
                         <td><strong>{item.item_name}</strong></td>
                         <td className="text-right text-muted">{yen(item.unit_price)}/{item.unit ?? "式"}</td>
                         <td className="text-right">{item.quantity}{item.unit ?? "式"}</td>
-                        <td className="text-right"><strong>{yen(item.line_total)}</strong></td>
+                        <td className="text-right"><strong>{yen(calcLineTotal(item))}</strong></td>
                         <td>
                           <button
                             className="btn btn-sm btn-danger"
@@ -750,8 +756,9 @@ export default function ProjectWorkspacePage() {
                       </tr>
                     ))}
                     <tr className="table-total-row">
-                      <td colSpan={5} className="text-right"><strong>見積合計</strong></td>
+                      <td colSpan={4} className="text-right"><strong>見積合計</strong></td>
                       <td className="text-right"><strong>{yen(estimateTotal)}</strong></td>
+                      <td></td>
                     </tr>
                   </tbody>
                 </table>

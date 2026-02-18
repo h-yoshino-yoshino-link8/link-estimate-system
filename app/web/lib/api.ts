@@ -212,7 +212,22 @@ function readLocalDb(): LocalDb {
     return seeded;
   }
   try {
-    return JSON.parse(raw) as LocalDb;
+    const db = JSON.parse(raw) as LocalDb;
+    let repaired = false;
+    for (const item of db.project_items ?? []) {
+      const lt = Number(item.line_total);
+      if (!Number.isFinite(lt) || lt === 0) {
+        const computed = safeNumber(item.unit_price) * safeNumber(item.quantity);
+        if (computed !== 0) {
+          item.line_total = computed;
+          repaired = true;
+        }
+      }
+    }
+    if (repaired) {
+      window.localStorage.setItem(LOCAL_DB_KEY, JSON.stringify(db));
+    }
+    return db;
   } catch {
     const seeded = seedLocalDb();
     window.localStorage.setItem(LOCAL_DB_KEY, JSON.stringify(seeded));
