@@ -64,6 +64,13 @@ export default function ProjectCockpitPage() {
   const [adding, setAdding] = useState(false);
   const [templates] = useState(() => getEstimateTemplates());
 
+  // Inline edit
+  const [editingCell, setEditingCell] = useState<{ itemId: number; field: 'quantity' | 'selling_price' | 'cost_price' } | null>(null);
+  const [editValue, setEditValue] = useState("");
+
+  // PDF export staff name
+  const [staffName, setStaffName] = useState("吉野 博");
+
   // Invoice form
   const [invAmount, setInvAmount] = useState("");
   const [invCreating, setInvCreating] = useState(false);
@@ -184,11 +191,7 @@ export default function ProjectCockpitPage() {
   };
 
   const handleAddItem = async () => {
-    if (!selectedMaster && !isCustomItem) {
-      setMessage("工事項目を選択するか、カスタム項目名を入力してください");
-      return;
-    }
-    if (isCustomItem && !searchText.trim()) {
+    if (!selectedMaster && !searchText.trim()) {
       setMessage("項目名を入力してください");
       return;
     }
@@ -229,6 +232,29 @@ export default function ProjectCockpitPage() {
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "削除失敗");
     }
+  };
+
+  const startEditing = (item: ProjectItem, field: 'quantity' | 'selling_price' | 'cost_price') => {
+    setEditingCell({ itemId: item.id, field });
+    setEditValue(String(item[field]));
+  };
+
+  const commitEdit = async () => {
+    if (!editingCell) return;
+    const numVal = safeNum(editValue);
+    try {
+      await updateProjectItem(projectId, editingCell.itemId, { [editingCell.field]: numVal });
+      setEditingCell(null);
+      setEditValue("");
+      await load();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "更新失敗");
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingCell(null);
+    setEditValue("");
   };
 
   const handleStatusChange = async (status: string) => {
@@ -306,7 +332,7 @@ export default function ProjectCockpitPage() {
 
   const handleExportPdf = () => {
     try {
-      const html = exportEstimateHtml(projectId);
+      const html = exportEstimateHtml(projectId, { staffName });
       const w = window.open("", "_blank");
       if (w) {
         w.document.write(html);
@@ -335,7 +361,14 @@ export default function ProjectCockpitPage() {
             {project?.site_address && <> / {project.site_address}</>}
           </p>
         </div>
-        <div className="cockpit-actions">
+        <div className="cockpit-actions" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            type="text"
+            value={staffName}
+            onChange={(e) => setStaffName(e.target.value)}
+            placeholder="担当者名"
+            style={{ width: 120, padding: "4px 8px", fontSize: 12, border: "1px solid var(--c-border)", borderRadius: 4 }}
+          />
           <button className="btn" onClick={handleExportPdf}>見積書印刷</button>
           <Link href="/projects" className="btn" style={{ textDecoration: "none" }}>一覧に戻る</Link>
         </div>
@@ -424,7 +457,8 @@ export default function ProjectCockpitPage() {
                 }}
                 onFocus={() => { if (searchText.trim()) setShowSuggestions(true); }}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                placeholder="工事項目を検索... （例: クロス, ユニットバス, 3LDKフルリノベ）"
+                onKeyDown={(e) => { if (e.key === 'Enter' && searchText.trim() && !showSuggestions) { e.preventDefault(); void handleAddItem(); } }}
+                placeholder="工事項目を検索 or 自由入力してEnterで追加"
               />
 
               {showSuggestions && searchText.trim() && (
@@ -476,7 +510,7 @@ export default function ProjectCockpitPage() {
 
             {/* Detail fields */}
             <div style={{ display: "flex", gap: "var(--sp-2)", flexWrap: "wrap", alignItems: "flex-end", marginTop: "var(--sp-2)" }}>
-              {isCustomItem && (
+              {!selectedMaster && (
                 <>
                   <label style={{ width: 100 }}>
                     カテゴリ
@@ -500,7 +534,7 @@ export default function ProjectCockpitPage() {
                 原価単価
                 <input type="number" value={addCost} onChange={(e) => setAddCost(e.target.value)} placeholder="自動" />
               </label>
-              <button className="btn btn-primary" onClick={() => void handleAddItem()} disabled={adding || (!selectedMaster && !isCustomItem)}>
+              <button className="btn btn-primary" onClick={() => void handleAddItem()} disabled={adding || !searchText.trim()}>
                 {adding ? "追加中..." : "追加"}
               </button>
             </div>
@@ -542,14 +576,60 @@ export default function ProjectCockpitPage() {
                             const iCost = itemCostTotal(item);
                             const iMar = itemMargin(item);
                             const iRate = marginRate(iSelling, iCost);
+                            const isEditingQty = editingCell?.itemId === item.id && editingCell.field === 'quantity';
+                            const isEditingSelling = editingCell?.itemId === item.id && editingCell.field === 'selling_price';
+                            const isEditingCost = editingCell?.itemId === item.id && editingCell.field === 'cost_price';
                             return (
                               <tr key={item.id}>
                                 <td style={{ fontWeight: 500 }}>{item.item_name}</td>
-                                <td className="text-right">{item.quantity}</td>
+                                <td className={`text-right editable-cell`} onClick={() => !isEditingQty && startEditing(item, 'quantity')}>
+                                  {isEditingQty ? (
+                                    <input
+                                      className="inline-edit-input"
+                                      type="number"
+                                      value={editValue}
+                                      onChange={(e) => setEditValue(e.target.value)}
+                                      onBlur={() => void commitEdit()}
+                                      onKeyDown={(e) => { if (e.key === 'Enter') void commitEdit(); if (e.key === 'Escape') cancelEdit(); }}
+                                      autoFocus
+                                      min="0"
+                                    />
+                                  ) : item.quantity}
+                                </td>
                                 <td>{item.unit}</td>
-                                <td className="text-right">
-                                  {yen(item.selling_price)}
-                                  <span className="cost-sub">原{yen(item.cost_price)}</span>
+                                <td className={`text-right editable-cell`} onClick={() => { if (!isEditingSelling && !isEditingCost) startEditing(item, 'selling_price'); }}>
+                                  {isEditingSelling ? (
+                                    <input
+                                      className="inline-edit-input"
+                                      type="number"
+                                      value={editValue}
+                                      onChange={(e) => setEditValue(e.target.value)}
+                                      onBlur={() => void commitEdit()}
+                                      onKeyDown={(e) => { if (e.key === 'Enter') void commitEdit(); if (e.key === 'Escape') cancelEdit(); }}
+                                      autoFocus
+                                      min="0"
+                                    />
+                                  ) : isEditingCost ? (
+                                    <>
+                                      {yen(item.selling_price)}
+                                      <span className="cost-sub">原<input
+                                        className="inline-edit-input"
+                                        type="number"
+                                        value={editValue}
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        onBlur={() => void commitEdit()}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') void commitEdit(); if (e.key === 'Escape') cancelEdit(); }}
+                                        autoFocus
+                                        min="0"
+                                        style={{ width: 70, display: 'inline', fontSize: 11 }}
+                                      /></span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      {yen(item.selling_price)}
+                                      <span className="cost-sub" onClick={(e) => { e.stopPropagation(); startEditing(item, 'cost_price'); }}>原{yen(item.cost_price)}</span>
+                                    </>
+                                  )}
                                 </td>
                                 <td className="text-right" style={{ fontWeight: 600 }}>{yen(iSelling)}</td>
                                 <td className="text-right" style={{ fontSize: 12, color: "var(--c-text-3)" }}>{yen(iCost)}</td>

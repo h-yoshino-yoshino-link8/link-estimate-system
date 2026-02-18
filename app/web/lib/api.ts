@@ -315,6 +315,79 @@ function seedLocalDb(): LocalDb {
     { id: 90, category: "諸経費", item_name: "現場管理費", unit: "式", cost_price: 0, selling_price: 15000 },
     { id: 91, category: "諸経費", item_name: "廃棄物処理", unit: "式", cost_price: 15000, selling_price: 25000 },
     { id: 92, category: "諸経費", item_name: "養生費", unit: "式", cost_price: 5000, selling_price: 10000 },
+
+    // --- 追加項目（ID 100〜） ---
+
+    // 内装追加
+    { id: 100, category: "内装", item_name: "ソフト巾木貼替", unit: "m", cost_price: 400, selling_price: 700, vendor_id: "V-001" },
+    { id: 101, category: "内装", item_name: "壁紙下地パテ処理", unit: "m2", cost_price: 300, selling_price: 600, vendor_id: "V-001" },
+    { id: 102, category: "内装", item_name: "天井クロス貼替（量産）", unit: "m2", cost_price: 900, selling_price: 1500, vendor_id: "V-001" },
+    { id: 103, category: "内装", item_name: "アクセントクロス（1000番台）", unit: "m2", cost_price: 1200, selling_price: 2000, vendor_id: "V-001" },
+    { id: 104, category: "内装", item_name: "腰壁造作", unit: "m", cost_price: 3000, selling_price: 5000, vendor_id: "V-003" },
+    { id: 105, category: "内装", item_name: "カーペット張替え", unit: "m2", cost_price: 3000, selling_price: 5000, vendor_id: "V-001" },
+    { id: 106, category: "内装", item_name: "長尺シート貼り", unit: "m2", cost_price: 3500, selling_price: 5800, vendor_id: "V-001" },
+
+    // 水回り追加
+    { id: 110, category: "設備", item_name: "シャワー水栓交換", unit: "箇所", cost_price: 12000, selling_price: 22000, vendor_id: "V-010" },
+    { id: 111, category: "設備", item_name: "排水管洗浄", unit: "式", cost_price: 8000, selling_price: 15000, vendor_id: "V-010" },
+    { id: 112, category: "設備", item_name: "防水工事（浴室）", unit: "式", cost_price: 40000, selling_price: 70000, vendor_id: "V-002" },
+    { id: 113, category: "設備", item_name: "キッチン交換（ミニ）", unit: "台", cost_price: 80000, selling_price: 140000, vendor_id: "V-010" },
+    { id: 114, category: "設備", item_name: "キッチン交換（システム）", unit: "台", cost_price: 250000, selling_price: 400000, vendor_id: "V-010" },
+    { id: 115, category: "設備", item_name: "浴室換気扇交換", unit: "台", cost_price: 8000, selling_price: 15000, vendor_id: "V-005" },
+    { id: 116, category: "設備", item_name: "ウォシュレット交換", unit: "台", cost_price: 25000, selling_price: 45000, vendor_id: "V-010" },
+    { id: 117, category: "設備", item_name: "排水トラップ交換", unit: "箇所", cost_price: 3000, selling_price: 6000, vendor_id: "V-010" },
+
+    // 建具
+    { id: 120, category: "建具", item_name: "室内ドア交換", unit: "枚", cost_price: 20000, selling_price: 35000, vendor_id: "V-003" },
+    { id: 121, category: "建具", item_name: "クローゼット扉交換", unit: "枚", cost_price: 15000, selling_price: 28000, vendor_id: "V-003" },
+    { id: 122, category: "建具", item_name: "玄関ドア調整", unit: "式", cost_price: 5000, selling_price: 10000, vendor_id: "V-003" },
+    { id: 123, category: "建具", item_name: "レバーハンドル交換", unit: "箇所", cost_price: 3000, selling_price: 6000, vendor_id: "V-003" },
+    { id: 124, category: "建具", item_name: "ドアクローザー交換", unit: "台", cost_price: 8000, selling_price: 15000, vendor_id: "V-003" },
+    { id: 125, category: "建具", item_name: "引戸レール交換", unit: "箇所", cost_price: 5000, selling_price: 9000, vendor_id: "V-003" },
+
+    // 金物・小物
+    { id: 130, category: "金物・小物", item_name: "スイッチプレート交換", unit: "箇所", cost_price: 300, selling_price: 800, vendor_id: "V-005" },
+    { id: 131, category: "金物・小物", item_name: "カーテンレール取付", unit: "箇所", cost_price: 2000, selling_price: 4500, vendor_id: "V-003" },
+    { id: 132, category: "金物・小物", item_name: "タオルバー交換", unit: "箇所", cost_price: 1500, selling_price: 3500, vendor_id: "V-003" },
+    { id: 133, category: "金物・小物", item_name: "ペーパーホルダー交換", unit: "箇所", cost_price: 1000, selling_price: 2500, vendor_id: "V-003" },
+    { id: 134, category: "金物・小物", item_name: "鏡交換（洗面）", unit: "枚", cost_price: 5000, selling_price: 10000, vendor_id: "V-003" },
+    { id: 135, category: "金物・小物", item_name: "物干し金物取付", unit: "箇所", cost_price: 3000, selling_price: 6000, vendor_id: "V-003" },
+
+    // 外装追加
+    { id: 140, category: "外装", item_name: "屋根塗装", unit: "m2", cost_price: 2200, selling_price: 3800, vendor_id: "V-002" },
+    { id: 141, category: "外装", item_name: "雨樋交換", unit: "m", cost_price: 3000, selling_price: 5500, vendor_id: "V-002" },
+    { id: 142, category: "外装", item_name: "シーリング打替え", unit: "m", cost_price: 800, selling_price: 1500, vendor_id: "V-002" },
+    { id: 143, category: "外装", item_name: "ベランダ防水", unit: "m2", cost_price: 4000, selling_price: 7000, vendor_id: "V-002" },
+    { id: 144, category: "外装", item_name: "外壁部分補修", unit: "m2", cost_price: 3000, selling_price: 5500, vendor_id: "V-002" },
+
+    // 防犯・安全
+    { id: 150, category: "防犯・安全", item_name: "鍵交換（シリンダー）", unit: "箇所", cost_price: 8000, selling_price: 15000, vendor_id: "V-003" },
+    { id: 151, category: "防犯・安全", item_name: "インターホン交換", unit: "台", cost_price: 12000, selling_price: 22000, vendor_id: "V-005" },
+    { id: 152, category: "防犯・安全", item_name: "火災報知器交換", unit: "台", cost_price: 4000, selling_price: 8000, vendor_id: "V-005" },
+    { id: 153, category: "防犯・安全", item_name: "手すり取付", unit: "箇所", cost_price: 8000, selling_price: 15000, vendor_id: "V-003" },
+
+    // 解体・撤去
+    { id: 160, category: "解体・撤去", item_name: "残置物撤去（1R分）", unit: "式", cost_price: 30000, selling_price: 50000, vendor_id: "V-006" },
+    { id: 161, category: "解体・撤去", item_name: "残置物撤去（2DK分）", unit: "式", cost_price: 50000, selling_price: 80000, vendor_id: "V-006" },
+    { id: 162, category: "解体・撤去", item_name: "部分解体（壁）", unit: "m2", cost_price: 3000, selling_price: 5500, vendor_id: "V-006" },
+    { id: 163, category: "解体・撤去", item_name: "部分解体（床）", unit: "m2", cost_price: 2500, selling_price: 4500, vendor_id: "V-006" },
+    { id: 164, category: "解体・撤去", item_name: "エアコン撤去", unit: "台", cost_price: 5000, selling_price: 10000, vendor_id: "V-006" },
+
+    // エアコン・換気
+    { id: 170, category: "設備", item_name: "エアコン取付（新規）", unit: "台", cost_price: 15000, selling_price: 28000, vendor_id: "V-005" },
+    { id: 171, category: "設備", item_name: "エアコン交換", unit: "台", cost_price: 55000, selling_price: 95000, vendor_id: "V-005" },
+    { id: 172, category: "設備", item_name: "換気扇交換（キッチン）", unit: "台", cost_price: 10000, selling_price: 18000, vendor_id: "V-005" },
+    { id: 173, category: "設備", item_name: "24時間換気システム点検", unit: "式", cost_price: 5000, selling_price: 10000, vendor_id: "V-005" },
+
+    // 防水・外装追加
+    { id: 180, category: "外装", item_name: "外壁クラック補修", unit: "箇所", cost_price: 2000, selling_price: 4000, vendor_id: "V-002" },
+    { id: 181, category: "外装", item_name: "鉄部塗装（手摺・階段）", unit: "m", cost_price: 1500, selling_price: 2800, vendor_id: "V-008" },
+    { id: 182, category: "外装", item_name: "共用部塗装", unit: "m2", cost_price: 1800, selling_price: 3200, vendor_id: "V-008" },
+
+    // クリーニング追加
+    { id: 190, category: "クリーニング", item_name: "ハウスクリーニング（3LDK）", unit: "式", cost_price: 45000, selling_price: 70000, vendor_id: "V-004" },
+    { id: 191, category: "クリーニング", item_name: "水回りクリーニング", unit: "式", cost_price: 15000, selling_price: 25000, vendor_id: "V-004" },
+    { id: 192, category: "クリーニング", item_name: "ベランダ清掃", unit: "式", cost_price: 5000, selling_price: 10000, vendor_id: "V-004" },
   ];
 
   // サンプル案件 — 実際のビジネスに近い内容
@@ -1343,6 +1416,84 @@ const ESTIMATE_TEMPLATES: EstimateTemplate[] = [
       { category: "諸経費", item_name: "養生費", unit: "式", quantity: 1, cost_price: 5000, selling_price: 10000 },
     ],
   },
+  // --- 追加テンプレート ---
+  {
+    id: "tpl-1r-genjo",
+    name: "1R 原状回復",
+    description: "ワンルームの最小原状回復パック（3項目）",
+    keywords: ["1R", "ワンルーム", "原状"],
+    items: [
+      { category: "内装", item_name: "クロス貼替（量産）", unit: "m2", quantity: 30, cost_price: 850, selling_price: 1400 },
+      { category: "クリーニング", item_name: "ハウスクリーニング（1K）", unit: "式", quantity: 1, cost_price: 22000, selling_price: 35000 },
+      { category: "諸経費", item_name: "現場管理費", unit: "式", quantity: 1, cost_price: 0, selling_price: 10000 },
+    ],
+  },
+  {
+    id: "tpl-1ldk-genjo",
+    name: "1LDK 原状回復",
+    description: "1LDKの標準原状回復パック（6項目）",
+    keywords: ["1LDK", "原状"],
+    items: [
+      { category: "内装", item_name: "クロス貼替（量産）", unit: "m2", quantity: 55, cost_price: 850, selling_price: 1400 },
+      { category: "内装", item_name: "CF貼替", unit: "m2", quantity: 12, cost_price: 2800, selling_price: 4500 },
+      { category: "クリーニング", item_name: "ハウスクリーニング（1K）", unit: "式", quantity: 1, cost_price: 22000, selling_price: 35000 },
+      { category: "設備", item_name: "混合水栓交換", unit: "箇所", quantity: 1, cost_price: 15000, selling_price: 28000 },
+      { category: "諸経費", item_name: "現場管理費", unit: "式", quantity: 1, cost_price: 0, selling_price: 15000 },
+      { category: "諸経費", item_name: "廃棄物処理", unit: "式", quantity: 1, cost_price: 15000, selling_price: 25000 },
+    ],
+  },
+  {
+    id: "tpl-2ldk-genjo",
+    name: "2LDK 原状回復",
+    description: "2LDKの標準原状回復パック（7項目）",
+    keywords: ["2LDK", "原状"],
+    items: [
+      { category: "内装", item_name: "クロス貼替（量産）", unit: "m2", quantity: 80, cost_price: 850, selling_price: 1400 },
+      { category: "内装", item_name: "CF貼替", unit: "m2", quantity: 18, cost_price: 2800, selling_price: 4500 },
+      { category: "内装", item_name: "巾木交換", unit: "m", quantity: 30, cost_price: 600, selling_price: 1000 },
+      { category: "クリーニング", item_name: "ハウスクリーニング（2DK）", unit: "式", quantity: 1, cost_price: 35000, selling_price: 55000 },
+      { category: "設備", item_name: "混合水栓交換", unit: "箇所", quantity: 2, cost_price: 15000, selling_price: 28000 },
+      { category: "諸経費", item_name: "現場管理費", unit: "式", quantity: 1, cost_price: 0, selling_price: 20000 },
+      { category: "諸経費", item_name: "廃棄物処理", unit: "式", quantity: 1, cost_price: 15000, selling_price: 25000 },
+    ],
+  },
+  {
+    id: "tpl-kitchen-pack",
+    name: "キッチン交換パック",
+    description: "ミニキッチン交換と周辺工事一式（4項目）",
+    keywords: ["キッチン", "台所"],
+    items: [
+      { category: "設備", item_name: "キッチン交換（ミニ）", unit: "台", quantity: 1, cost_price: 80000, selling_price: 140000 },
+      { category: "内装", item_name: "クロス貼替（量産）", unit: "m2", quantity: 10, cost_price: 850, selling_price: 1400 },
+      { category: "内装", item_name: "CF貼替", unit: "m2", quantity: 6, cost_price: 2800, selling_price: 4500 },
+      { category: "諸経費", item_name: "現場管理費", unit: "式", quantity: 1, cost_price: 0, selling_price: 15000 },
+    ],
+  },
+  {
+    id: "tpl-mizumawari-4ten",
+    name: "水回り4点セット",
+    description: "キッチン・トイレ・洗面・浴室水栓まるごとパック（6項目）",
+    keywords: ["水回り", "4点", "まるごと"],
+    items: [
+      { category: "設備", item_name: "キッチン交換（ミニ）", unit: "台", quantity: 1, cost_price: 80000, selling_price: 140000 },
+      { category: "設備", item_name: "トイレ交換", unit: "台", quantity: 1, cost_price: 45000, selling_price: 85000 },
+      { category: "設備", item_name: "洗面台交換", unit: "台", quantity: 1, cost_price: 35000, selling_price: 65000 },
+      { category: "設備", item_name: "混合水栓交換", unit: "箇所", quantity: 3, cost_price: 15000, selling_price: 28000 },
+      { category: "設備", item_name: "排水管洗浄", unit: "式", quantity: 1, cost_price: 8000, selling_price: 15000 },
+      { category: "諸経費", item_name: "現場管理費", unit: "式", quantity: 1, cost_price: 0, selling_price: 25000 },
+    ],
+  },
+  {
+    id: "tpl-taikyo-cleaning",
+    name: "退去時クリーニング基本パック",
+    description: "退去後の基本クリーニングセット（3項目）",
+    keywords: ["退去", "クリーニング", "引渡"],
+    items: [
+      { category: "クリーニング", item_name: "ハウスクリーニング（1K）", unit: "式", quantity: 1, cost_price: 22000, selling_price: 35000 },
+      { category: "クリーニング", item_name: "エアコンクリーニング", unit: "台", quantity: 1, cost_price: 8000, selling_price: 15000 },
+      { category: "諸経費", item_name: "現場管理費", unit: "式", quantity: 1, cost_price: 0, selling_price: 10000 },
+    ],
+  },
 ];
 
 export function getEstimateTemplates(): EstimateTemplate[] {
@@ -1367,8 +1518,8 @@ export async function addTemplateToProject(projectId: string, templateId: string
   return added;
 }
 
-// HTML見積書（ブラウザ印刷→PDF変換用）
-export function exportEstimateHtml(projectId: string): string {
+// HTML見積書（ブラウザ印刷→PDF変換用）3ページ構成: 表紙 / 大項目サマリー / 明細
+export function exportEstimateHtml(projectId: string, options?: { staffName?: string }): string {
   const db = readLocalDb();
   const project = db.projects.find((p) => p.project_id === projectId);
   const items = db.project_items.filter((x) => x.project_id === projectId);
@@ -1383,111 +1534,201 @@ export function exportEstimateHtml(projectId: string): string {
   const total = items.reduce((s, x) => s + safeNum(x.selling_price) * safeNum(x.quantity), 0);
   const yenFmt = (v: number) => `&yen;${Math.round(v).toLocaleString()}`;
 
-  let tableRows = "";
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
+  const staffName = options?.staffName || "";
+
+  // --- ページ2: 大項目サマリー行 ---
+  let summaryRows = "";
+  let summaryNo = 1;
+  for (const [cat, catItems] of groups.entries()) {
+    const catTotal = catItems.reduce((s, x) => s + safeNum(x.selling_price) * safeNum(x.quantity), 0);
+    summaryRows += `<tr>
+      <td style="text-align:center;padding:10px 6px">${summaryNo++}</td>
+      <td style="padding:10px 6px;font-weight:500">${cat}</td>
+      <td style="text-align:right;padding:10px 6px;font-weight:600">${yenFmt(catTotal)}</td>
+    </tr>`;
+  }
+
+  // --- ページ3: 明細行 ---
+  let detailRows = "";
   let rowNum = 1;
   for (const [cat, catItems] of groups.entries()) {
+    const catTotal = catItems.reduce((s, x) => s + safeNum(x.selling_price) * safeNum(x.quantity), 0);
+    detailRows += `<tr class="cat-header">
+      <td colspan="7" style="background:#e8edf5;font-weight:700;color:#1e40af;padding:6px 8px;font-size:12px;border-bottom:2px solid #1e40af">${cat}</td>
+    </tr>`;
     for (const item of catItems) {
       const lineTotal = safeNum(item.selling_price) * safeNum(item.quantity);
-      tableRows += `<tr>
+      detailRows += `<tr>
         <td style="text-align:center">${rowNum++}</td>
-        <td style="color:#666;font-size:11px">${cat}</td>
-        <td>${item.item_name}${item.specification ? `<br><span style="font-size:11px;color:#888">${item.specification}</span>` : ""}</td>
-        <td style="text-align:center">${item.unit}</td>
+        <td>${item.item_name}</td>
+        <td style="font-size:10px;color:#666">${item.specification || ""}</td>
         <td style="text-align:right">${item.quantity}</td>
+        <td style="text-align:center">${item.unit}</td>
         <td style="text-align:right">${yenFmt(item.selling_price)}</td>
         <td style="text-align:right;font-weight:600">${yenFmt(lineTotal)}</td>
       </tr>`;
     }
+    detailRows += `<tr class="cat-subtotal">
+      <td colspan="6" style="text-align:right;padding-right:12px;font-weight:600;background:#f8fafc;border-top:1px solid #cbd5e1">${cat} 小計</td>
+      <td style="text-align:right;font-weight:700;background:#f8fafc;border-top:1px solid #cbd5e1">${yenFmt(catTotal)}</td>
+    </tr>`;
   }
-
-  const today = new Date();
-  const dateStr = `${today.getFullYear()}年${today.getMonth() + 1}月${today.getDate()}日`;
 
   return `<!DOCTYPE html><html lang="ja">
 <head><meta charset="utf-8">
 <title>御見積書 - ${project?.project_name ?? projectId}</title>
 <style>
-  @page { size: A4; margin: 15mm; }
+  @page { size: A4 landscape; margin: 12mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:"Hiragino Kaku Gothic Pro","Yu Gothic","Meiryo",sans-serif; font-size:13px; color:#333; line-height:1.6; }
-  .header { display:flex; justify-content:space-between; margin-bottom:30px; }
-  .title { font-size:28px; font-weight:700; letter-spacing:8px; border-bottom:3px double #1e40af; padding-bottom:8px; color:#1e40af; }
-  .date { text-align:right; font-size:13px; margin-top:8px; }
-  .customer { font-size:18px; font-weight:600; border-bottom:1px solid #333; padding-bottom:4px; margin:20px 0 8px; }
-  .project-info { margin-bottom:20px; }
-  .project-info span { display:inline-block; margin-right:20px; }
-  .total-box { background:#f0f4ff; border:2px solid #1e40af; border-radius:8px; padding:16px 24px; margin:20px 0; display:flex; justify-content:space-between; align-items:center; }
-  .total-label { font-size:16px; font-weight:600; }
-  .total-amount { font-size:28px; font-weight:700; color:#1e40af; }
-  table { width:100%; border-collapse:collapse; margin:16px 0; }
-  th { background:#1e40af; color:#fff; padding:8px 6px; font-size:12px; font-weight:600; }
-  td { padding:6px; border-bottom:1px solid #e2e8f0; font-size:12px; }
-  tr:nth-child(even) { background:#f8fafc; }
-  .footer { margin-top:40px; padding-top:20px; border-top:1px solid #e2e8f0; }
-  .company { font-size:12px; line-height:1.8; }
-  .company-name { font-size:16px; font-weight:700; color:#1e40af; }
-  .note { font-size:11px; color:#666; margin-top:20px; }
-  .stamp-area { width:100px; height:100px; border:1px dashed #ccc; display:flex; align-items:center; justify-content:center; color:#ccc; font-size:11px; }
-  @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+  body { font-family:"Hiragino Kaku Gothic Pro","Yu Gothic","Meiryo",sans-serif; font-size:11px; color:#333; line-height:1.5; }
+  .page { page-break-after: always; min-height: 100vh; position: relative; }
+  .page:last-child { page-break-after: auto; }
+
+  /* === 表紙 === */
+  .cover { display:flex; flex-direction:column; justify-content:space-between; padding:20px 40px; }
+  .cover-top { display:flex; justify-content:space-between; align-items:flex-start; }
+  .logo { font-size:22px; font-weight:800; color:#1e40af; letter-spacing:2px; }
+  .logo-infinity { font-size:28px; margin-right:6px; }
+  .cover-date { font-size:13px; color:#555; text-align:right; }
+  .cover-center { text-align:center; margin:30px 0 20px; }
+  .cover-title { font-size:36px; font-weight:700; letter-spacing:16px; color:#1e40af; border-bottom:3px double #1e40af; display:inline-block; padding-bottom:12px; }
+  .cover-customer { font-size:24px; font-weight:700; margin:28px 0 8px; text-align:center; }
+  .cover-customer-suffix { font-size:16px; font-weight:400; color:#555; margin-left:8px; }
+  .cover-project-info { text-align:center; font-size:14px; color:#555; margin-bottom:24px; }
+  .cover-total-box { background:#f0f4ff; border:2px solid #1e40af; border-radius:10px; padding:20px 36px; margin:0 auto 30px; max-width:520px; display:flex; justify-content:space-between; align-items:center; }
+  .cover-total-label { font-size:16px; font-weight:600; color:#333; }
+  .cover-total-amount { font-size:34px; font-weight:800; color:#1e40af; }
+  .cover-bottom { display:flex; justify-content:space-between; align-items:flex-end; }
+  .cover-company { font-size:12px; line-height:1.9; }
+  .cover-company-name { font-size:18px; font-weight:700; color:#1e40af; margin-bottom:4px; }
+  .cover-right { display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .cover-staff { font-size:13px; font-weight:500; }
+  .stamp-area { width:80px; height:80px; border:1px dashed #bbb; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#ccc; font-size:11px; }
+
+  /* === テーブル共通 === */
+  table { width:100%; border-collapse:collapse; }
+  th { background:#1e40af; color:#fff; padding:7px 6px; font-size:11px; font-weight:600; text-align:center; border:1px solid #1e40af; }
+  td { padding:5px 6px; font-size:11px; border:1px solid #e2e8f0; }
+  tr:nth-child(even):not(.cat-header):not(.cat-subtotal) { background:#fafbfd; }
+
+  /* === ページ2: サマリー === */
+  .summary-page { padding:20px 30px; }
+  .page-title { font-size:18px; font-weight:700; color:#1e40af; border-bottom:2px solid #1e40af; padding-bottom:6px; margin-bottom:16px; }
+  .summary-table th { font-size:12px; padding:10px 8px; }
+  .summary-table td { font-size:13px; }
+  .summary-total td { background:#f0f4ff; font-weight:700; font-size:14px; border-top:2px solid #1e40af; }
+
+  /* === ページ3: 明細 === */
+  .detail-page { padding:20px 16px; }
+  .detail-note { font-size:10px; color:#666; margin-top:16px; line-height:1.8; }
+  .detail-total td { background:#f0f4ff; font-weight:700; font-size:12px; border-top:2px solid #1e40af; }
+
+  @media print {
+    body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .page { page-break-after: always; }
+    .page:last-child { page-break-after: auto; }
+  }
 </style>
 </head>
 <body>
-  <div class="header">
-    <div>
-      <div class="title">御 見 積 書</div>
-      <div class="date">${dateStr}</div>
+
+<!-- ========== ページ1: 表紙 ========== -->
+<div class="page cover">
+  <div class="cover-top">
+    <div class="logo"><span class="logo-infinity">&infin;</span>LinK</div>
+    <div class="cover-date">${dateStr}</div>
+  </div>
+
+  <div>
+    <div class="cover-center">
+      <div class="cover-title">御 見 積 書</div>
     </div>
-    <div class="stamp-area">印</div>
+
+    <div class="cover-customer">
+      ${project?.customer_name ?? ""}
+      <span class="cover-customer-suffix">御中</span>
+    </div>
+
+    <div class="cover-project-info">
+      案件名: ${project?.project_name ?? ""}
+      ${project?.site_address ? `<br>現場住所: ${project.site_address}` : ""}
+    </div>
+
+    <div class="cover-total-box">
+      <span class="cover-total-label">御見積金額（税抜）</span>
+      <span class="cover-total-amount">${yenFmt(total)}</span>
+    </div>
   </div>
 
-  <div class="customer">${project?.customer_name ?? ""} 御中</div>
-
-  <div class="project-info">
-    <span>案件: ${project?.project_name ?? ""}</span>
-    ${project?.site_address ? `<span>現場: ${project.site_address}</span>` : ""}
+  <div class="cover-bottom">
+    <div class="cover-company">
+      <div class="cover-company-name">株式会社LinK</div>
+      代表取締役 吉野 博<br>
+      〒179-0081 東京都練馬区北町2-30-18 バロアール302<br>
+      TEL: 070-8532-0024<br>
+      建設業許可番号: 東京都知事（般-5）第160886号
+    </div>
+    <div class="cover-right">
+      ${staffName ? `<div class="cover-staff">担当: ${staffName}</div>` : ""}
+      <div class="stamp-area">印</div>
+    </div>
   </div>
+</div>
 
-  <div class="total-box">
-    <span class="total-label">御見積金額（税抜）</span>
-    <span class="total-amount">${yenFmt(total)}</span>
-  </div>
+<!-- ========== ページ2: 大項目サマリー ========== -->
+<div class="page summary-page">
+  <div class="page-title">工事区分別 金額一覧</div>
+  <table class="summary-table">
+    <thead>
+      <tr>
+        <th style="width:50px">No</th>
+        <th>工事区分</th>
+        <th style="width:160px">金額</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${summaryRows}
+      <tr class="summary-total">
+        <td colspan="2" style="text-align:right;padding-right:16px">合計（税抜）</td>
+        <td style="text-align:right;color:#1e40af;font-size:16px">${yenFmt(total)}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
+<!-- ========== ページ3以降: 明細 ========== -->
+<div class="page detail-page">
+  <div class="page-title">見積明細</div>
   <table>
     <thead>
       <tr>
         <th style="width:30px">No</th>
-        <th style="width:70px">区分</th>
         <th>項目名</th>
-        <th style="width:40px">単位</th>
-        <th style="width:50px">数量</th>
+        <th style="width:120px">仕様</th>
+        <th style="width:45px">数量</th>
+        <th style="width:35px">単位</th>
         <th style="width:80px">単価</th>
         <th style="width:90px">金額</th>
       </tr>
     </thead>
     <tbody>
-      ${tableRows}
-      <tr style="background:#f0f4ff;font-weight:700">
-        <td colspan="6" style="text-align:right;padding-right:12px">合計</td>
-        <td style="text-align:right;font-size:14px;color:#1e40af">${yenFmt(total)}</td>
+      ${detailRows}
+      <tr class="detail-total">
+        <td colspan="6" style="text-align:right;padding-right:12px">総合計（税抜）</td>
+        <td style="text-align:right;color:#1e40af;font-size:13px">${yenFmt(total)}</td>
       </tr>
     </tbody>
   </table>
 
-  <div class="note">
-    ※ 上記金額は税抜です。別途消費税がかかります。<br>
+  <div class="detail-note">
+    ※ 上記金額は全て税抜価格です。別途消費税がかかります。<br>
     ※ 見積有効期限: 発行日より30日間<br>
     ※ 工事範囲・仕様の変更がある場合は別途お見積りいたします。
   </div>
+</div>
 
-  <div class="footer">
-    <div class="company">
-      <div class="company-name">株式会社LinK</div>
-      代表取締役 吉野 博<br>
-      東京都練馬区北町2-30-18 バロアール302<br>
-      TEL: 070-8532-0024<br>
-      建設業許可番号: 東京都知事（般-5）第160886号
-    </div>
-  </div>
 </body>
 </html>`;
 }

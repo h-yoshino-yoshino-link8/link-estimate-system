@@ -316,6 +316,19 @@ textarea { height: auto; min-height: 60px; padding: var(--sp-2) var(--sp-3); res
 }
 .table .cost-sub { display: block; font-size: 10px; color: var(--c-text-4); font-weight: 400; margin-top: 1px; }
 
+/* --- Inline edit in table cells --- */
+.table td .inline-edit-input {
+  width: 80px; height: 26px; padding: 0 6px;
+  font-size: 13px; font-weight: 500; text-align: right;
+  border: 1px solid var(--c-primary); border-radius: var(--r-sm);
+  background: var(--c-surface); color: var(--c-text);
+  box-shadow: 0 0 0 2px var(--c-primary-ring);
+  font-family: var(--font);
+}
+.table td .inline-edit-input:focus { outline: none; }
+.table td.editable-cell { cursor: pointer; position: relative; }
+.table td.editable-cell:hover { background: var(--c-primary-light); border-radius: 2px; }
+
 /* --- Mobile --- */
 .mobile-menu-btn {
   display: none; align-items: center; justify-content: center;
