@@ -89,6 +89,8 @@ export default function ProjectWorkspacePage() {
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("estimate");
 
+  /* --- Estimate form: category-first selection --- */
+  const [selectedCategory, setSelectedCategory] = useState("");
   const [masterItemId, setMasterItemId] = useState("");
   const [itemQuantity, setItemQuantity] = useState("1");
 
@@ -129,10 +131,24 @@ export default function ProjectWorkspacePage() {
     [payments],
   );
 
-  const masterOptions = useMemo(
-    () => workItems.map((w) => ({ id: w.id, label: `${w.category} / ${w.item_name} / ¥${w.standard_unit_price}` })),
+  /* --- Category-first work item selection --- */
+  const categories = useMemo(
+    () => Array.from(new Set(workItems.map((w) => w.category))).sort(),
     [workItems],
   );
+  const filteredItems = useMemo(
+    () => selectedCategory ? workItems.filter((w) => w.category === selectedCategory) : workItems,
+    [workItems, selectedCategory],
+  );
+  const selectedMaster = useMemo(
+    () => workItems.find((w) => String(w.id) === masterItemId) ?? null,
+    [workItems, masterItemId],
+  );
+  const previewLineTotal = useMemo(() => {
+    if (!selectedMaster) return 0;
+    return (selectedMaster.standard_unit_price ?? 0) * Number(itemQuantity || 0);
+  }, [selectedMaster, itemQuantity]);
+
   const activeInvoice = useMemo(() => invoices.find((x) => x.invoice_id === invoiceToUpdate) ?? null, [invoices, invoiceToUpdate]);
   const activePayment = useMemo(() => payments.find((x) => x.payment_id === paymentToUpdate) ?? null, [payments, paymentToUpdate]);
   const settledSales = Math.max(invoiceTotal - invoiceRemaining, 0);
@@ -149,16 +165,16 @@ export default function ProjectWorkspacePage() {
 
   const nextAction = useMemo(() => {
     if (!stepEstimateDone) {
-      return { step: 1, title: "見積明細を追加してください", detail: "工事項目を選び「明細追加」を押します。", tab: "estimate" as TabKey };
+      return { step: 1, title: "見積明細を追加してください", detail: "工事カテゴリと項目を選び、数量を入力して追加します。", tab: "estimate" as TabKey };
     }
     if (!stepInvoiceDone) {
-      return { step: 2, title: "請求を登録してください", detail: "請求額を入力し登録します。", tab: "invoice" as TabKey };
+      return { step: 2, title: "請求を登録してください", detail: "請求額を入力して登録します。", tab: "invoice" as TabKey };
     }
     if (!stepInvoiceSettled) {
       return { step: 2, title: "入金反映を完了してください", detail: "入金額を更新して未入金残を0にします。", tab: "invoice" as TabKey };
     }
     if (!stepPaymentDone) {
-      return { step: 3, title: "業者支払を登録してください", detail: "業者名と発注額を入力し登録します。", tab: "payment" as TabKey };
+      return { step: 3, title: "業者支払を登録してください", detail: "業者名と発注額を入力して登録します。", tab: "payment" as TabKey };
     }
     return { step: 4, title: "書類発行・連絡へ進めます", detail: "見積書/領収書PDFの出力と請求メール文面作成を実行できます。", tab: "docs" as TabKey };
   }, [stepEstimateDone, stepInvoiceDone, stepInvoiceSettled, stepPaymentDone]);
@@ -180,6 +196,8 @@ export default function ProjectWorkspacePage() {
     setPayments(paymentsResp);
 
     if (workItemsResp.length > 0) {
+      const cats = Array.from(new Set(workItemsResp.map((w) => w.category))).sort();
+      if (cats.length > 0 && !selectedCategory) setSelectedCategory(cats[0]);
       setMasterItemId((prev) => (prev ? prev : String(workItemsResp[0].id)));
     }
 
@@ -232,6 +250,15 @@ export default function ProjectWorkspacePage() {
     };
   }, [previewUrl]);
 
+  // When category changes, auto-select first item in that category
+  useEffect(() => {
+    if (!selectedCategory) return;
+    const items = workItems.filter((w) => w.category === selectedCategory);
+    if (items.length > 0) {
+      setMasterItemId(String(items[0].id));
+    }
+  }, [selectedCategory, workItems]);
+
   /* --- Helpers --- */
   const appendAuditLog = (category: AuditLogEntry["category"], action: string, detail: string) => {
     if (typeof window === "undefined") return;
@@ -277,16 +304,20 @@ export default function ProjectWorkspacePage() {
   };
 
   const onAddProjectItem = async () => {
+    if (!selectedMaster) {
+      showMsg("工事項目を選択してください", "error");
+      return;
+    }
     setWorking(true);
     setMessage("");
     try {
       await createProjectItem(projectId, {
-        master_item_id: masterItemId ? Number(masterItemId) : undefined,
+        master_item_id: selectedMaster.id,
         quantity: Number(itemQuantity || "1"),
       });
       await loadWorkspace();
-      appendAuditLog("見積", "明細追加", `項目ID ${masterItemId || "-"} / 数量 ${itemQuantity || "1"}`);
-      showMsg("明細を追加しました", "success");
+      appendAuditLog("見積", "明細追加", `${selectedMaster.item_name} × ${itemQuantity}${selectedMaster.unit ?? "式"} = ${yen(previewLineTotal)}`);
+      showMsg(`「${selectedMaster.item_name}」を追加しました（${yen(previewLineTotal)}）`, "success");
     } catch (error) {
       showMsg(error instanceof Error ? error.message : "明細追加に失敗しました", "error");
     } finally {
@@ -474,8 +505,11 @@ export default function ProjectWorkspacePage() {
           <h1>{project?.project_name ?? "-"}</h1>
           <p>
             <span className="id-mono">{projectId}</span>
-            {" "}
-            顧客: {project?.customer_name ?? "-"} / 担当: {project?.owner_name ?? "-"} / ステータス:{" "}
+            {" / "}
+            {project?.customer_name ?? "-"}
+            {" / "}
+            {project?.owner_name ?? "-"}
+            {" / "}
             <span className="badge badge-default">{project?.project_status ?? "-"}</span>
           </p>
         </div>
@@ -502,27 +536,30 @@ export default function ProjectWorkspacePage() {
         <div className="kpi-card">
           <span className="kpi-label">見積金額</span>
           <span className="kpi-value">{yen(estimateTotal)}</span>
-          <span className="kpi-sub">{projectItems.length}明細</span>
+          <span className="kpi-sub">{projectItems.length}件の明細</span>
         </div>
         <div className="kpi-card">
           <span className="kpi-label">請求金額</span>
           <span className="kpi-value">{yen(invoiceTotal)}</span>
-          <span className="kpi-sub">{invoices.length}件</span>
+          <span className="kpi-sub">{invoices.length}件の請求</span>
         </div>
         <div className="kpi-card">
-          <span className="kpi-label">入金済</span>
+          <span className="kpi-label">入金済み</span>
           <span className="kpi-value">{yen(settledSales)}</span>
-          <span className="kpi-sub">未回収 {yen(invoiceRemaining)}</span>
+          <span className="kpi-sub">{invoiceRemaining > 0 ? `未回収 ${yen(invoiceRemaining)}` : "全額回収済み"}</span>
         </div>
         <div className="kpi-card">
-          <span className="kpi-label">原価（発注額）</span>
+          <span className="kpi-label">原価（業者発注）</span>
           <span className="kpi-value">{yen(paymentTotal)}</span>
-          <span className="kpi-sub">未払 {yen(paymentRemaining)}</span>
+          <span className="kpi-sub">{paymentRemaining > 0 ? `未払い ${yen(paymentRemaining)}` : payments.length > 0 ? "全額支払済み" : "未登録"}</span>
         </div>
         <div className={`kpi-card ${marginWarning ? "kpi-warn" : ""}`}>
-          <span className="kpi-label">粗利見込</span>
+          <span className="kpi-label">粗利見込み</span>
           <span className="kpi-value">{yen(grossEstimate)}</span>
-          <span className="kpi-sub">利益率 {grossRate.toFixed(1)}%{marginWarning ? ` (目標 ${targetMarginRate.toFixed(0)}% 未達)` : ""}</span>
+          <span className="kpi-sub">
+            利益率 {grossRate.toFixed(1)}%
+            {marginWarning ? ` — 目標${targetMarginRate.toFixed(0)}%を下回っています` : ""}
+          </span>
         </div>
       </div>
 
@@ -547,7 +584,7 @@ export default function ProjectWorkspacePage() {
           <span className="next-banner-desc">{nextAction.detail}</span>
         </div>
         <button className="btn btn-primary" onClick={() => setActiveTab(nextAction.tab)}>
-          {nextAction.title}
+          このステップへ移動
         </button>
       </div>
 
@@ -570,69 +607,122 @@ export default function ProjectWorkspacePage() {
       {/* === TAB: Estimate === */}
       {activeTab === "estimate" ? (
         <div className="animate-in" style={{ display: "grid", gap: "var(--sp-5)" }}>
+          {/* Item Add Card */}
           <div className="card">
-            <h3 className="card-title"><span className="step-num">1</span> 見積明細を追加</h3>
-            <p className="card-desc">工事項目と数量を入力して「明細追加」を押してください。</p>
-            <div className="form-row-3" style={{ alignItems: "end" }}>
-              <label>
-                <span className="label-text">工事項目</span>
-                <select value={masterItemId} onChange={(e) => setMasterItemId(e.target.value)} disabled={working}>
-                  {masterOptions.map((w) => (
-                    <option key={w.id} value={String(w.id)}>{w.label}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span className="label-text">数量</span>
-                <input value={itemQuantity} onChange={(e) => setItemQuantity(e.target.value)} />
-              </label>
-              <button className="btn btn-primary" onClick={onAddProjectItem} disabled={working || masterOptions.length === 0} style={{ height: 36 }}>
-                明細追加
+            <h3 className="card-title"><span className="step-num">1</span> 工事項目を見積に追加</h3>
+            <p className="card-desc">
+              カテゴリを選んで工事項目を絞り込み、数量を入力してください。
+              追加ボタンを押すと見積明細に反映されます。
+            </p>
+
+            {/* Step A: Category */}
+            <div style={{ display: "grid", gap: "var(--sp-4)" }}>
+              <div className="form-row-3" style={{ alignItems: "end" }}>
+                <label>
+                  <span className="label-text">工事カテゴリ</span>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    disabled={working}
+                  >
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="label-text">工事項目</span>
+                  <select
+                    value={masterItemId}
+                    onChange={(e) => setMasterItemId(e.target.value)}
+                    disabled={working}
+                  >
+                    {filteredItems.map((w) => (
+                      <option key={w.id} value={String(w.id)}>
+                        {w.item_name}（{yen(w.standard_unit_price)}/{w.unit ?? "式"}）
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="label-text">数量</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={itemQuantity}
+                    onChange={(e) => setItemQuantity(e.target.value)}
+                    style={{ textAlign: "right" }}
+                  />
+                </label>
+              </div>
+
+              {/* Calculation Preview */}
+              {selectedMaster ? (
+                <div className="calc-preview">
+                  <span className="calc-preview-label">追加される金額:</span>
+                  <span className="calc-preview-formula">
+                    {yen(selectedMaster.standard_unit_price)}/{selectedMaster.unit ?? "式"} × {itemQuantity || 0}{selectedMaster.unit ?? "式"}
+                  </span>
+                  <span className="calc-preview-eq">=</span>
+                  <span className="calc-preview-result">{yen(previewLineTotal)}</span>
+                </div>
+              ) : null}
+
+              <button
+                className="btn btn-primary"
+                onClick={onAddProjectItem}
+                disabled={working || !selectedMaster}
+                style={{ justifySelf: "start" }}
+              >
+                この項目を見積に追加
               </button>
             </div>
           </div>
 
+          {/* Estimate Table */}
           <div className="card">
             <h3 className="card-title">見積明細一覧</h3>
-            <div className="table-wrap">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>大項目</th>
-                    <th>仕様</th>
-                    <th className="text-right">数量</th>
-                    <th className="text-right">単価</th>
-                    <th className="text-right">金額</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {projectItems.length === 0 ? (
-                    <tr className="empty-row"><td colSpan={5}>明細はまだありません</td></tr>
-                  ) : null}
-                  {projectItems.map((item) => (
-                    <tr key={item.id}>
-                      <td>{item.category}</td>
-                      <td>{item.item_name}</td>
-                      <td className="text-right">{item.quantity}{item.unit ?? ""}</td>
-                      <td className="text-right">{yen(item.unit_price)}</td>
-                      <td className="text-right"><strong>{yen(item.line_total)}</strong></td>
+            {projectItems.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">&#128221;</div>
+                <p className="empty-state-text">見積明細はまだありません。上のフォームから工事項目を追加してください。</p>
+              </div>
+            ) : (
+              <div className="table-wrap">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>カテゴリ</th>
+                      <th>工事項目</th>
+                      <th className="text-right">単価</th>
+                      <th className="text-right">数量</th>
+                      <th className="text-right">金額（単価 × 数量）</th>
                     </tr>
-                  ))}
-                  {projectItems.length > 0 ? (
+                  </thead>
+                  <tbody>
+                    {projectItems.map((item) => (
+                      <tr key={item.id}>
+                        <td><span className="badge badge-default">{item.category}</span></td>
+                        <td><strong>{item.item_name}</strong></td>
+                        <td className="text-right text-muted">{yen(item.unit_price)}/{item.unit ?? "式"}</td>
+                        <td className="text-right">{item.quantity}{item.unit ?? "式"}</td>
+                        <td className="text-right"><strong>{yen(item.line_total)}</strong></td>
+                      </tr>
+                    ))}
                     <tr className="table-total-row">
                       <td colSpan={4} className="text-right"><strong>見積合計</strong></td>
                       <td className="text-right"><strong>{yen(estimateTotal)}</strong></td>
                     </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
-          {/* Project Info */}
-          <div className="card">
-            <h3 className="card-title">案件情報</h3>
-            <div className="form-row-3">
+          {/* Project Info (collapsible) */}
+          <details className="card">
+            <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 14 }}>案件情報を表示</summary>
+            <div className="form-row-3 mt-3">
               <label>
                 <span className="label-text">顧客名</span>
                 <input value={project?.customer_name ?? ""} disabled />
@@ -660,14 +750,13 @@ export default function ProjectWorkspacePage() {
                 <input value={project?.created_at ?? ""} disabled />
               </label>
             </div>
-          </div>
+          </details>
         </div>
       ) : null}
 
       {/* === TAB: Invoice === */}
       {activeTab === "invoice" ? (
         <div className="animate-in" style={{ display: "grid", gap: "var(--sp-5)" }}>
-          {/* Mini KPIs */}
           <div className="mini-kpi-row">
             <div className="mini-kpi">
               <span className="mini-label">請求件数</span>
@@ -678,15 +767,14 @@ export default function ProjectWorkspacePage() {
               <span className={`mini-value ${invoiceRemaining > 0 ? "text-warn" : ""}`}>{yen(invoiceRemaining)}</span>
             </div>
             <div className="mini-kpi">
-              <span className="mini-label">入金済</span>
+              <span className="mini-label">入金済み</span>
               <span className="mini-value text-ok">{yen(settledSales)}</span>
             </div>
           </div>
 
           <div className="subcard-row">
-            {/* New Invoice */}
             <div className="subcard">
-              <h4 className="subcard-title">新規請求</h4>
+              <h4 className="subcard-title">新しい請求を登録</h4>
               <div className="form-grid">
                 <div className="form-row-2">
                   <label>
@@ -714,12 +802,11 @@ export default function ProjectWorkspacePage() {
               </div>
             </div>
 
-            {/* Settle Invoice */}
             <div className="subcard">
-              <h4 className="subcard-title">入金反映</h4>
+              <h4 className="subcard-title">入金を反映する</h4>
               <div className="form-grid">
                 <label>
-                  <span className="label-text">対象請求ID</span>
+                  <span className="label-text">対象の請求</span>
                   <select
                     value={invoiceToUpdate}
                     onChange={(e) => {
@@ -729,63 +816,63 @@ export default function ProjectWorkspacePage() {
                     }}
                     disabled={working || invoices.length === 0}
                   >
-                    {invoices.length === 0 ? <option value="">請求データなし</option> : null}
+                    {invoices.length === 0 ? <option value="">請求がまだありません</option> : null}
                     {invoices.map((inv) => (
                       <option key={inv.invoice_id} value={inv.invoice_id}>
-                        {inv.invoice_id} / 残{yen(inv.remaining_amount)}
+                        {inv.invoice_id} — 未回収 {yen(inv.remaining_amount)}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label>
-                  <span className="label-text">更新後入金額</span>
+                  <span className="label-text">入金額（累計）</span>
                   <input value={invoicePaidToUpdate} onChange={(e) => setInvoicePaidToUpdate(e.target.value)} />
                 </label>
                 <button className="btn btn-primary" onClick={onSettleInvoice} disabled={working || !invoiceToUpdate}>
                   入金を反映
                 </button>
                 {activeInvoice ? (
-                  <p className="form-help">選択中: {activeInvoice.invoice_id} / {activeInvoice.status ?? "-"}</p>
+                  <p className="form-help">現在の状態: {activeInvoice.status ?? "-"}</p>
                 ) : null}
               </div>
             </div>
           </div>
 
-          {/* Invoice Table */}
-          <div className="card">
-            <h3 className="card-title">請求一覧</h3>
-            <div className="table-wrap">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>請求ID</th>
-                    <th>種別</th>
-                    <th className="text-right">請求額</th>
-                    <th className="text-right">残額</th>
-                    <th>状態</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoices.length === 0 ? (
-                    <tr className="empty-row"><td colSpan={5}>請求データはまだありません</td></tr>
-                  ) : null}
-                  {invoices.map((inv) => (
-                    <tr key={inv.invoice_id}>
-                      <td><span className="id-mono">{inv.invoice_id}</span></td>
-                      <td>{inv.invoice_type ?? "-"}</td>
-                      <td className="text-right">{yen(inv.invoice_amount)}</td>
-                      <td className="text-right">{yen(inv.remaining_amount)}</td>
-                      <td>
-                        <span className={`badge ${inv.remaining_amount > 0 ? "badge-warning" : "badge-success"}`}>
-                          {inv.status ?? "-"}
-                        </span>
-                      </td>
+          {invoices.length > 0 ? (
+            <div className="card">
+              <h3 className="card-title">請求一覧</h3>
+              <div className="table-wrap">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>請求ID</th>
+                      <th>種別</th>
+                      <th className="text-right">請求額</th>
+                      <th className="text-right">入金済み</th>
+                      <th className="text-right">未回収</th>
+                      <th>状態</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {invoices.map((inv) => (
+                      <tr key={inv.invoice_id}>
+                        <td><span className="id-mono">{inv.invoice_id}</span></td>
+                        <td>{inv.invoice_type ?? "-"}</td>
+                        <td className="text-right">{yen(inv.invoice_amount)}</td>
+                        <td className="text-right">{yen(inv.paid_amount)}</td>
+                        <td className="text-right">{yen(inv.remaining_amount)}</td>
+                        <td>
+                          <span className={`badge ${inv.remaining_amount > 0 ? "badge-warning" : "badge-success"}`}>
+                            {inv.status ?? "-"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -798,19 +885,18 @@ export default function ProjectWorkspacePage() {
               <span className="mini-value">{payments.length} 件</span>
             </div>
             <div className="mini-kpi">
-              <span className="mini-label">発注合計</span>
+              <span className="mini-label">発注合計（原価）</span>
               <span className="mini-value">{yen(paymentTotal)}</span>
             </div>
             <div className="mini-kpi">
-              <span className="mini-label">未払残</span>
+              <span className="mini-label">未払い残</span>
               <span className={`mini-value ${paymentRemaining > 0 ? "text-warn" : ""}`}>{yen(paymentRemaining)}</span>
             </div>
           </div>
 
           <div className="subcard-row">
-            {/* New Payment */}
             <div className="subcard">
-              <h4 className="subcard-title">新規支払</h4>
+              <h4 className="subcard-title">業者への支払を登録</h4>
               <div className="form-grid">
                 <label>
                   <span className="label-text">業者名</span>
@@ -822,7 +908,7 @@ export default function ProjectWorkspacePage() {
                     <input value={paymentOrderedAmount} onChange={(e) => setPaymentOrderedAmount(e.target.value)} />
                   </label>
                   <label>
-                    <span className="label-text">支払額</span>
+                    <span className="label-text">支払済み額</span>
                     <input value={paymentPaidAmount} onChange={(e) => setPaymentPaidAmount(e.target.value)} />
                   </label>
                 </div>
@@ -832,12 +918,11 @@ export default function ProjectWorkspacePage() {
               </div>
             </div>
 
-            {/* Settle Payment */}
             <div className="subcard">
-              <h4 className="subcard-title">支払消込</h4>
+              <h4 className="subcard-title">支払を消込する</h4>
               <div className="form-grid">
                 <label>
-                  <span className="label-text">対象支払ID</span>
+                  <span className="label-text">対象の支払</span>
                   <select
                     value={paymentToUpdate}
                     onChange={(e) => {
@@ -847,29 +932,28 @@ export default function ProjectWorkspacePage() {
                     }}
                     disabled={working || payments.length === 0}
                   >
-                    {payments.length === 0 ? <option value="">支払データなし</option> : null}
+                    {payments.length === 0 ? <option value="">支払がまだありません</option> : null}
                     {payments.map((pay) => (
                       <option key={pay.payment_id} value={pay.payment_id}>
-                        {pay.payment_id} / 残{yen(pay.remaining_amount)}
+                        {pay.vendor_name} — 未払い {yen(pay.remaining_amount)}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label>
-                  <span className="label-text">更新後支払額</span>
+                  <span className="label-text">支払額（累計）</span>
                   <input value={paymentPaidToUpdate} onChange={(e) => setPaymentPaidToUpdate(e.target.value)} />
                 </label>
                 <button className="btn btn-primary" onClick={onSettlePayment} disabled={working || !paymentToUpdate}>
                   消込を反映
                 </button>
                 {activePayment ? (
-                  <p className="form-help">選択中: {activePayment.payment_id} / {activePayment.status ?? "-"}</p>
+                  <p className="form-help">現在の状態: {activePayment.status ?? "-"}</p>
                 ) : null}
               </div>
             </div>
           </div>
 
-          {/* Payment Table */}
           {payments.length > 0 ? (
             <div className="card">
               <h3 className="card-title">支払一覧</h3>
@@ -877,19 +961,19 @@ export default function ProjectWorkspacePage() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>支払ID</th>
-                      <th>業者</th>
+                      <th>業者名</th>
                       <th className="text-right">発注額</th>
-                      <th className="text-right">残額</th>
+                      <th className="text-right">支払済み</th>
+                      <th className="text-right">未払い</th>
                       <th>状態</th>
                     </tr>
                   </thead>
                   <tbody>
                     {payments.map((pay) => (
                       <tr key={pay.payment_id}>
-                        <td><span className="id-mono">{pay.payment_id}</span></td>
-                        <td>{pay.vendor_name ?? "-"}</td>
+                        <td><strong>{pay.vendor_name ?? "-"}</strong></td>
                         <td className="text-right">{yen(pay.ordered_amount)}</td>
+                        <td className="text-right">{yen(pay.paid_amount)}</td>
                         <td className="text-right">{yen(pay.remaining_amount)}</td>
                         <td>
                           <span className={`badge ${pay.remaining_amount > 0 ? "badge-warning" : "badge-success"}`}>
@@ -911,35 +995,36 @@ export default function ProjectWorkspacePage() {
         <div className="animate-in" style={{ display: "grid", gap: "var(--sp-5)" }}>
           <div className="card">
             <h3 className="card-title"><span className="step-num">4</span> 書類発行・連絡</h3>
-            <p className="card-desc">帳票PDFを出力するとプレビューに表示されます。</p>
+            <p className="card-desc">帳票PDFを出力するとダウンロードされ、下のプレビューに表示されます。</p>
 
             <div className="doc-actions mb-4">
               <button className="btn btn-primary" onClick={onExportEstimate} disabled={working}>
-                見積書PDF
+                見積書PDF出力
               </button>
               <button className="btn" onClick={onExportReceipt} disabled={working || !invoiceIdForPdf}>
-                領収書PDF
+                領収書PDF出力
               </button>
               <button className="btn btn-ghost" onClick={onDraftInvoiceMail} disabled={working || invoices.length === 0}>
-                請求メール文面
+                請求メール文面を作成
               </button>
             </div>
 
-            <label>
-              <span className="label-text">領収書対象請求ID</span>
-              <select value={invoiceIdForPdf} onChange={(e) => setInvoiceIdForPdf(e.target.value)} disabled={working}>
-                {invoices.length === 0 ? <option value="">請求データなし</option> : null}
-                {invoices.map((inv) => (
-                  <option key={inv.invoice_id} value={inv.invoice_id}>
-                    {inv.invoice_id} / 入金 {yen(inv.paid_amount)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {invoices.length > 0 ? (
+              <label className="mb-4">
+                <span className="label-text">領収書の対象請求</span>
+                <select value={invoiceIdForPdf} onChange={(e) => setInvoiceIdForPdf(e.target.value)} disabled={working}>
+                  {invoices.map((inv) => (
+                    <option key={inv.invoice_id} value={inv.invoice_id}>
+                      {inv.invoice_id} — 入金済み {yen(inv.paid_amount)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
 
             <div className="preview-meta mt-4">
               <strong>{previewTitle || "帳票プレビュー"}</strong>
-              <span>{previewTitle ? "A4横" : "未出力"}</span>
+              <span>{previewTitle ? "A4横" : "PDFを出力するとここに表示されます"}</span>
             </div>
             <div className="preview-shell">
               {previewLoading ? (
@@ -947,7 +1032,7 @@ export default function ProjectWorkspacePage() {
               ) : previewUrl ? (
                 <iframe title={previewTitle || "帳票プレビュー"} src={previewUrl} />
               ) : (
-                <p className="text-muted">PDFを出力するとここにプレビューが表示されます</p>
+                <p className="text-muted" style={{ fontSize: 13 }}>見積書または領収書を出力すると、ここにプレビューが表示されます</p>
               )}
             </div>
           </div>
@@ -955,11 +1040,11 @@ export default function ProjectWorkspacePage() {
           {/* Audit Log */}
           <div className="card">
             <button className="audit-toggle" onClick={() => setShowAuditLog(!showAuditLog)}>
-              {showAuditLog ? "▼" : "▶"} 変更履歴（監査ログ） <span className="count-badge">{auditLogs.length}件</span>
+              {showAuditLog ? "▼" : "▶"} 操作履歴 <span className="count-badge">{auditLogs.length}件</span>
             </button>
             {showAuditLog ? (
               auditLogs.length === 0 ? (
-                <p className="form-help mt-2">操作を実行すると履歴が保存されます。</p>
+                <p className="form-help mt-2">操作を実行すると履歴が記録されます。</p>
               ) : (
                 <ul className="audit-list mt-2">
                   {auditLogs.map((row) => (
