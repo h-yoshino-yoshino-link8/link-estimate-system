@@ -7,6 +7,7 @@ import {
   createInvoice,
   createPayment,
   createProjectItem,
+  deleteProjectItem,
   downloadBlob,
   exportEstimate,
   exportReceipt,
@@ -27,7 +28,8 @@ import {
 } from "../../../lib/api";
 
 function yen(value: number) {
-  return `¥${Math.round(value).toLocaleString()}`;
+  const n = Number.isFinite(value) ? value : 0;
+  return `¥${Math.round(n).toLocaleString()}`;
 }
 
 type AuditLogEntry = {
@@ -98,6 +100,11 @@ export default function ProjectWorkspacePage() {
   const [invoicePaidAmount, setInvoicePaidAmount] = useState("0");
   const [invoiceType, setInvoiceType] = useState("一括");
   const [invoiceBilledAt, setInvoiceBilledAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [invoiceDueDate, setInvoiceDueDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    return d.toISOString().slice(0, 10);
+  });
 
   const [paymentVendorName, setPaymentVendorName] = useState("");
   const [paymentOrderedAmount, setPaymentOrderedAmount] = useState("");
@@ -328,6 +335,22 @@ export default function ProjectWorkspacePage() {
     }
   };
 
+  const onDeleteProjectItem = async (itemId: number, itemName: string) => {
+    if (!confirm(`「${itemName}」を見積から削除しますか？`)) return;
+    setWorking(true);
+    setMessage("");
+    try {
+      await deleteProjectItem(projectId, itemId);
+      await loadWorkspace();
+      appendAuditLog("見積", "明細削除", `${itemName} を削除`);
+      showMsg(`「${itemName}」を削除しました`, "success");
+    } catch (error) {
+      showMsg(error instanceof Error ? error.message : "明細削除に失敗しました", "error");
+    } finally {
+      setWorking(false);
+    }
+  };
+
   const onAddInvoice = async () => {
     setWorking(true);
     setMessage("");
@@ -338,6 +361,7 @@ export default function ProjectWorkspacePage() {
         paid_amount: Number(invoicePaidAmount || "0"),
         invoice_type: invoiceType,
         billed_at: invoiceBilledAt,
+        due_date: invoiceDueDate,
       });
       await loadWorkspace();
       setInvoiceIdForPdf(created.invoice_id);
@@ -703,6 +727,7 @@ export default function ProjectWorkspacePage() {
                       <th className="text-right">単価</th>
                       <th className="text-right">数量</th>
                       <th className="text-right">金額（単価 × 数量）</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -713,10 +738,19 @@ export default function ProjectWorkspacePage() {
                         <td className="text-right text-muted">{yen(item.unit_price)}/{item.unit ?? "式"}</td>
                         <td className="text-right">{item.quantity}{item.unit ?? "式"}</td>
                         <td className="text-right"><strong>{yen(item.line_total)}</strong></td>
+                        <td>
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => onDeleteProjectItem(item.id, item.item_name)}
+                            disabled={working}
+                          >
+                            削除
+                          </button>
+                        </td>
                       </tr>
                     ))}
                     <tr className="table-total-row">
-                      <td colSpan={4} className="text-right"><strong>見積合計</strong></td>
+                      <td colSpan={5} className="text-right"><strong>見積合計</strong></td>
                       <td className="text-right"><strong>{yen(estimateTotal)}</strong></td>
                     </tr>
                   </tbody>
@@ -797,6 +831,12 @@ export default function ProjectWorkspacePage() {
                     <span className="label-text">請求日</span>
                     <input type="date" value={invoiceBilledAt} onChange={(e) => setInvoiceBilledAt(e.target.value)} />
                   </label>
+                  <label>
+                    <span className="label-text">支払期日</span>
+                    <input type="date" value={invoiceDueDate} onChange={(e) => setInvoiceDueDate(e.target.value)} />
+                  </label>
+                </div>
+                <div className="form-row-2">
                   <label>
                     <span className="label-text">初回入金額</span>
                     <input value={invoicePaidAmount} onChange={(e) => setInvoicePaidAmount(e.target.value)} />

@@ -4,7 +4,13 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { getDashboardOverview, getInvoices, getPayments, type DashboardOverview, type Invoice, type Payment } from "../lib/api";
 
+function safeNum(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function yen(value: number) {
+  if (!Number.isFinite(value)) return "¥0";
   return `¥${Math.round(value).toLocaleString()}`;
 }
 
@@ -58,11 +64,11 @@ export default function ExecutiveDashboardPage() {
   }, []);
 
   const totalInvoiceAmount = useMemo(
-    () => invoices.reduce((sum, row) => sum + Number(row.invoice_amount || 0), 0),
+    () => invoices.reduce((sum, row) => sum + safeNum(row.invoice_amount), 0),
     [invoices],
   );
   const totalPaymentAmount = useMemo(
-    () => payments.reduce((sum, row) => sum + Number(row.ordered_amount || 0), 0),
+    () => payments.reduce((sum, row) => sum + safeNum(row.ordered_amount), 0),
     [payments],
   );
 
@@ -89,8 +95,9 @@ export default function ExecutiveDashboardPage() {
     return invoices
       .filter((inv) => inv.remaining_amount > 0)
       .map((inv) => {
+        const explicitDue = asDate(inv.due_date);
         const billed = asDate(inv.billed_at);
-        const due = billed ? addDays(billed, 30) : null;
+        const due = explicitDue ?? (billed ? addDays(billed, 30) : null);
         return { inv, due };
       })
       .filter((x) => x.due && x.due < today)
@@ -98,12 +105,15 @@ export default function ExecutiveDashboardPage() {
   }, [invoices]);
 
   const overdueAmount = useMemo(
-    () => overdueInvoices.reduce((sum, x) => sum + Number(x.inv.remaining_amount || 0), 0),
+    () => overdueInvoices.reduce((sum, x) => sum + safeNum(x.inv.remaining_amount), 0),
     [overdueInvoices],
   );
 
   const growthRate = overview?.yoy_growth_rate ?? 0;
-  const growthText = `${growthRate >= 0 ? "+" : ""}${growthRate.toFixed(1)}%`;
+  const hasLastYearData = (overview?.last_year_ytd_sales ?? 0) > 0;
+  const growthText = growthRate === 0 && !hasLastYearData
+    ? "データ不足"
+    : `${growthRate >= 0 ? "+" : ""}${growthRate.toFixed(1)}%`;
 
   return (
     <main className="page">

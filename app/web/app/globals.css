@@ -438,6 +438,8 @@ button { border: none; background: none; cursor: pointer; font-family: var(--fon
   .step-connector { display: none; }
   .mini-kpi-row { grid-template-columns: 1fr; }
   .top-nav { display: none; }
+  .mobile-menu-btn { display: flex; }
+  .mobile-nav { display: grid; }
   .tab-row { overflow-x: auto; }
   .projects-layout { grid-template-columns: 1fr; }
 }
@@ -500,3 +502,57 @@ button { border: none; background: none; cursor: pointer; font-family: var(--fon
 @media (max-width: 680px) {
   .dash-kpi-grid { grid-template-columns: 1fr; }
 }
+
+/* --- Mobile Navigation --- */
+.mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  margin-left: auto;
+  padding: 0;
+}
+.hamburger-icon {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--c-text);
+  position: relative;
+  border-radius: 1px;
+}
+.hamburger-icon::before,
+.hamburger-icon::after {
+  content: "";
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--c-text);
+  position: absolute;
+  left: 0;
+  border-radius: 1px;
+}
+.hamburger-icon::before { top: -6px; }
+.hamburger-icon::after { top: 6px; }
+
+.mobile-nav {
+  display: none;
+  padding: var(--sp-2) var(--sp-5);
+  border-top: 1px solid var(--c-border);
+  background: var(--c-surface);
+}
+.mobile-nav a {
+  display: block;
+  text-decoration: none;
+  color: var(--c-text-secondary);
+  padding: var(--sp-3) var(--sp-2);
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: var(--r-sm);
+  transition: all 0.15s;
+}
+.mobile-nav a:hover { color: var(--c-text); background: var(--c-bg); }
+.mobile-nav a.is-active { color: var(--c-primary); background: var(--c-primary-light); font-weight: 600; }

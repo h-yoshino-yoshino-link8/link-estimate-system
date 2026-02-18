@@ -5,6 +5,12 @@ const LOCAL_DB_KEY = "link_estimate_local_db_v1";
 const LOCAL_MODE_KEY = "link_estimate_local_mode_enabled";
 const LOCAL_MODE_EVENT = "link_estimate_local_mode_change";
 
+/** Safe number conversion — returns 0 for NaN/Infinity */
+function safeNumber(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export type WorkItemMaster = {
   id: number;
   source_item_id?: number | null;
@@ -51,6 +57,7 @@ export type Invoice = {
   invoice_amount: number;
   invoice_type?: string | null;
   billed_at?: string | null;
+  due_date?: string | null;
   paid_amount: number;
   remaining_amount: number;
   status?: string | null;
@@ -371,8 +378,8 @@ function localCreateProjectItem(
   if (!db.projects.find((x) => x.project_id === projectId)) throw new Error("案件が存在しません");
 
   const master = payload.master_item_id ? db.work_items.find((x) => x.id === payload.master_item_id) : undefined;
-  const quantity = Number(payload.quantity || 1);
-  const unitPrice = Number(payload.unit_price ?? master?.standard_unit_price ?? 0);
+  const quantity = safeNumber(payload.quantity || 1);
+  const unitPrice = safeNumber(payload.unit_price ?? master?.standard_unit_price ?? 0);
 
   const row: ProjectItem = {
     id: (db.project_items.reduce((m, x) => Math.max(m, x.id), 0) || 0) + 1,
@@ -394,6 +401,14 @@ function localGetProjectItems(projectId: string) {
   return readLocalDb().project_items.filter((x) => x.project_id === projectId);
 }
 
+function localDeleteProjectItem(itemId: number) {
+  const db = readLocalDb();
+  const idx = db.project_items.findIndex((x) => x.id === itemId);
+  if (idx === -1) throw new Error("明細が存在しません");
+  db.project_items.splice(idx, 1);
+  writeLocalDb(db);
+}
+
 function localGetInvoices(projectId?: string) {
   const rows = readLocalDb().invoices;
   if (!projectId) return rows;
@@ -405,6 +420,7 @@ function localCreateInvoice(payload: {
   invoice_amount: number;
   invoice_type?: string;
   billed_at?: string;
+  due_date?: string;
   paid_amount?: number;
   status?: string;
   note?: string;
@@ -412,15 +428,22 @@ function localCreateInvoice(payload: {
   const db = readLocalDb();
   if (!db.projects.find((x) => x.project_id === payload.project_id)) throw new Error("案件が存在しません");
   const invoiceId = nextPrefixedId(db.invoices.map((x) => x.invoice_id), "INV");
-  const amount = Number(payload.invoice_amount || 0);
-  const paid = Number(payload.paid_amount || 0);
+  const amount = safeNumber(payload.invoice_amount || 0);
+  const paid = safeNumber(payload.paid_amount || 0);
   const remaining = Math.max(amount - paid, 0);
+  const billedAt = payload.billed_at ?? ymd();
+  const dueDate = payload.due_date ?? (() => {
+    const d = new Date(billedAt);
+    d.setDate(d.getDate() + 30);
+    return ymd(d);
+  })();
   const row: Invoice = {
     invoice_id: invoiceId,
     project_id: payload.project_id,
     invoice_amount: amount,
     invoice_type: payload.invoice_type ?? "一括",
-    billed_at: payload.billed_at ?? ymd(),
+    billed_at: billedAt,
+    due_date: dueDate,
     paid_amount: paid,
     remaining_amount: remaining,
     status: payload.status ?? deriveInvoiceStatus(amount, paid),
@@ -443,10 +466,10 @@ function localUpdateInvoice(
   const db = readLocalDb();
   const row = db.invoices.find((x) => x.invoice_id === invoiceId);
   if (!row) throw new Error("請求が存在しません");
-  if (payload.invoice_amount !== undefined) row.invoice_amount = Number(payload.invoice_amount);
-  if (payload.paid_amount !== undefined) row.paid_amount = Number(payload.paid_amount);
+  if (payload.invoice_amount !== undefined) row.invoice_amount = safeNumber(payload.invoice_amount);
+  if (payload.paid_amount !== undefined) row.paid_amount = safeNumber(payload.paid_amount);
   if (payload.note !== undefined) row.note = payload.note;
-  row.remaining_amount = Math.max(Number(row.invoice_amount) - Number(row.paid_amount), 0);
+  row.remaining_amount = Math.max(safeNumber(row.invoice_amount) - safeNumber(row.paid_amount), 0);
   row.status = payload.status ?? deriveInvoiceStatus(row.invoice_amount, row.paid_amount);
   writeLocalDb(db);
   return row;
@@ -469,8 +492,8 @@ function localCreatePayment(payload: {
   const db = readLocalDb();
   if (!db.projects.find((x) => x.project_id === payload.project_id)) throw new Error("案件が存在しません");
   const paymentId = nextPrefixedId(db.payments.map((x) => x.payment_id), "PAY");
-  const ordered = Number(payload.ordered_amount || 0);
-  const paid = Number(payload.paid_amount || 0);
+  const ordered = safeNumber(payload.ordered_amount || 0);
+  const paid = safeNumber(payload.paid_amount || 0);
   const remaining = Math.max(ordered - paid, 0);
   const row: Payment = {
     payment_id: paymentId,
@@ -500,10 +523,10 @@ function localUpdatePayment(
   const db = readLocalDb();
   const row = db.payments.find((x) => x.payment_id === paymentId);
   if (!row) throw new Error("支払が存在しません");
-  if (payload.ordered_amount !== undefined) row.ordered_amount = Number(payload.ordered_amount);
-  if (payload.paid_amount !== undefined) row.paid_amount = Number(payload.paid_amount);
+  if (payload.ordered_amount !== undefined) row.ordered_amount = safeNumber(payload.ordered_amount);
+  if (payload.paid_amount !== undefined) row.paid_amount = safeNumber(payload.paid_amount);
   if (payload.note !== undefined) row.note = payload.note;
-  row.remaining_amount = Math.max(Number(row.ordered_amount) - Number(row.paid_amount), 0);
+  row.remaining_amount = Math.max(safeNumber(row.ordered_amount) - safeNumber(row.paid_amount), 0);
   row.status = payload.status ?? derivePaymentStatus(row.ordered_amount, row.paid_amount);
   writeLocalDb(db);
   return row;
@@ -516,11 +539,11 @@ function localDashboardSummary(): DashboardSummary {
     project_status_counts[p.project_status] = (project_status_counts[p.project_status] ?? 0) + 1;
   });
 
-  const invoice_total_amount = db.invoices.reduce((sum, x) => sum + Number(x.invoice_amount || 0), 0);
-  const invoice_remaining_amount = db.invoices.reduce((sum, x) => sum + Number(x.remaining_amount || 0), 0);
-  const payment_total_amount = db.payments.reduce((sum, x) => sum + Number(x.ordered_amount || 0), 0);
-  const payment_remaining_amount = db.payments.reduce((sum, x) => sum + Number(x.remaining_amount || 0), 0);
-  const item_total_amount = db.project_items.reduce((sum, x) => sum + Number(x.line_total || 0), 0);
+  const invoice_total_amount = db.invoices.reduce((sum, x) => sum + safeNumber(x.invoice_amount || 0), 0);
+  const invoice_remaining_amount = db.invoices.reduce((sum, x) => sum + safeNumber(x.remaining_amount || 0), 0);
+  const payment_total_amount = db.payments.reduce((sum, x) => sum + safeNumber(x.ordered_amount || 0), 0);
+  const payment_remaining_amount = db.payments.reduce((sum, x) => sum + safeNumber(x.remaining_amount || 0), 0);
+  const item_total_amount = db.project_items.reduce((sum, x) => sum + safeNumber(x.line_total || 0), 0);
 
   return {
     project_total: db.projects.length,
@@ -548,7 +571,7 @@ function localDashboardOverview(): DashboardOverview {
   db.invoices.forEach((inv) => {
     const billed = parseDate(inv.billed_at);
     if (!billed) return;
-    const amount = Number(inv.invoice_amount || 0);
+    const amount = safeNumber(inv.invoice_amount || 0);
     if (billed.getFullYear() === currentYear) {
       monthly[billed.getMonth()].amount += amount;
       if (billed.getMonth() === month) current_month_sales += amount;
@@ -558,20 +581,20 @@ function localDashboardOverview(): DashboardOverview {
     }
   });
 
-  const all_time_sales = db.invoices.reduce((sum, x) => sum + Number(x.invoice_amount || 0), 0);
-  const receivable_balance = db.invoices.reduce((sum, x) => sum + Number(x.remaining_amount || 0), 0);
-  const payable_balance = db.payments.reduce((sum, x) => sum + Number(x.remaining_amount || 0), 0);
+  const all_time_sales = db.invoices.reduce((sum, x) => sum + safeNumber(x.invoice_amount || 0), 0);
+  const receivable_balance = db.invoices.reduce((sum, x) => sum + safeNumber(x.remaining_amount || 0), 0);
+  const payable_balance = db.payments.reduce((sum, x) => sum + safeNumber(x.remaining_amount || 0), 0);
 
   const yoy_growth_rate =
     last_year_ytd_sales > 0 ? ((ytd_sales - last_year_ytd_sales) / last_year_ytd_sales) * 100 : 0;
 
   const invoiceByProject = new Map<string, number>();
   db.invoices.forEach((inv) => {
-    invoiceByProject.set(inv.project_id, (invoiceByProject.get(inv.project_id) ?? 0) + Number(inv.invoice_amount || 0));
+    invoiceByProject.set(inv.project_id, (invoiceByProject.get(inv.project_id) ?? 0) + safeNumber(inv.invoice_amount || 0));
   });
   const paymentByProject = new Map<string, number>();
   db.payments.forEach((pay) => {
-    paymentByProject.set(pay.project_id, (paymentByProject.get(pay.project_id) ?? 0) + Number(pay.ordered_amount || 0));
+    paymentByProject.set(pay.project_id, (paymentByProject.get(pay.project_id) ?? 0) + safeNumber(pay.ordered_amount || 0));
   });
 
   const active_projects = db.projects
@@ -664,7 +687,7 @@ function localEstimateBlob(projectId: string) {
   const db = readLocalDb();
   const project = db.projects.find((p) => p.project_id === projectId);
   const items = db.project_items.filter((x) => x.project_id === projectId);
-  const total = items.reduce((sum, x) => sum + Number(x.line_total || 0), 0);
+  const total = items.reduce((sum, x) => sum + safeNumber(x.line_total || 0), 0);
   return buildLandscapeA4Pdf([
     "Estimate (Local Mode)",
     `Project ID: ${projectId}`,
@@ -684,7 +707,7 @@ function localReceiptBlob(invoiceId: string) {
     "Receipt (Local Mode)",
     `Invoice ID: ${invoiceId}`,
     `Project ID: ${invoice?.project_id ?? "-"}`,
-    `Paid Amount: JPY ${Math.round(Number(invoice?.paid_amount || 0)).toLocaleString()}`,
+    `Paid Amount: JPY ${Math.round(safeNumber(invoice?.paid_amount || 0)).toLocaleString()}`,
     "",
     "Generated from local browser data.",
     "Paper: A4 Landscape",
@@ -837,6 +860,21 @@ export async function createProjectItem(
   );
 }
 
+export async function deleteProjectItem(projectId: string, itemId: number) {
+  return withFallback(
+    async () => {
+      const res = await apiFetch(`${API_BASE}/api/v1/projects/${encodeURIComponent(projectId)}/items/${itemId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`明細削除に失敗しました: ${body}`);
+      }
+    },
+    () => localDeleteProjectItem(itemId),
+  );
+}
+
 export async function getProjectItems(projectId: string) {
   return withFallback(
     async () => {
@@ -868,6 +906,7 @@ export async function createInvoice(payload: {
   invoice_amount: number;
   invoice_type?: string;
   billed_at?: string;
+  due_date?: string;
   paid_amount?: number;
   status?: string;
   note?: string;

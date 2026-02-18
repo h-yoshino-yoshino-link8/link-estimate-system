@@ -35,6 +35,7 @@ export default function ProjectsPage() {
   const [ownerName, setOwnerName] = useState("吉野博");
   const [marginRate, setMarginRate] = useState("25");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -77,10 +78,19 @@ export default function ProjectsPage() {
   );
 
   const filteredProjects = useMemo(() => {
-    const rows = [...projects].sort((a, b) => b.created_at.localeCompare(a.created_at));
-    if (statusFilter === "all") return rows;
-    return rows.filter((x) => x.project_status === statusFilter);
-  }, [projects, statusFilter]);
+    let rows = [...projects].sort((a, b) => b.created_at.localeCompare(a.created_at));
+    if (statusFilter !== "all") rows = rows.filter((x) => x.project_status === statusFilter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      rows = rows.filter((x) =>
+        x.project_name.toLowerCase().includes(q) ||
+        x.customer_name.toLowerCase().includes(q) ||
+        x.project_id.toLowerCase().includes(q) ||
+        (x.site_address ?? "").toLowerCase().includes(q)
+      );
+    }
+    return rows;
+  }, [projects, statusFilter, searchQuery]);
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -226,6 +236,12 @@ export default function ProjectsPage() {
             <h2 className="card-title" style={{ margin: 0 }}>
               案件一覧 <span className="count-badge">{filteredProjects.length}件</span>
             </h2>
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="案件名・顧客名で検索..."
+              style={{ width: 200, height: 32, fontSize: 13 }}
+            />
             {statuses.length > 0 && (
               <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                 ステータス
