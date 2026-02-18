@@ -9,10 +9,12 @@ import {
   createProjectItem, updateProjectItem, deleteProjectItem,
   createInvoice, updateInvoice,
   createPayment, updatePayment,
-  updateProjectStatus, exportEstimate, downloadBlob,
+  updateProjectStatus, exportEstimateHtml,
+  addTemplateToProject, getEstimateTemplates,
   itemCostTotal, itemSellingTotal, itemMargin, marginRate,
   PROJECT_STATUSES,
   type Project, type ProjectItem, type WorkItemMaster, type Invoice, type Payment, type Vendor,
+  type EstimateTemplate,
 } from "../../../lib/api";
 
 function yen(value: number) {
@@ -43,12 +45,18 @@ export default function ProjectCockpitPage() {
   const [message, setMessage] = useState("");
   const [tab, setTab] = useState<Tab>("estimate");
 
-  // Add item form
-  const [selectedMasterId, setSelectedMasterId] = useState<number | "">("");
+  // Add item form (search-based)
+  const [searchText, setSearchText] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedMaster, setSelectedMaster] = useState<WorkItemMaster | null>(null);
+  const [isCustomItem, setIsCustomItem] = useState(false);
+  const [customCategory, setCustomCategory] = useState("");
+  const [customUnit, setCustomUnit] = useState("式");
   const [addQty, setAddQty] = useState("1");
   const [addCost, setAddCost] = useState("");
   const [addSelling, setAddSelling] = useState("");
   const [adding, setAdding] = useState(false);
+  const [templates] = useState(() => getEstimateTemplates());
 
   // Invoice form
   const [invAmount, setInvAmount] = useState("");
@@ -87,15 +95,22 @@ export default function ProjectCockpitPage() {
 
   useEffect(() => { void load(); }, [projectId]);
 
-  // When master item changes, auto-fill cost/selling
-  useEffect(() => {
-    if (selectedMasterId === "") return;
-    const master = workItems.find((x) => x.id === Number(selectedMasterId));
-    if (master) {
-      setAddCost(String(master.cost_price));
-      setAddSelling(String(master.selling_price));
-    }
-  }, [selectedMasterId, workItems]);
+  // Search suggestions
+  const suggestions = useMemo(() => {
+    const q = searchText.trim();
+    if (!q) return { items: [] as WorkItemMaster[], templates: [] as EstimateTemplate[], showCustom: false };
+    const ql = q.toLowerCase();
+    const matchedItems = workItems.filter((wi) =>
+      wi.item_name.toLowerCase().includes(ql) ||
+      wi.category.toLowerCase().includes(ql)
+    );
+    const matchedTemplates = templates.filter((t) =>
+      t.name.toLowerCase().includes(ql) ||
+      t.description.toLowerCase().includes(ql) ||
+      t.keywords.some((k) => k.toLowerCase().includes(ql))
+    );
+    return { items: matchedItems, templates: matchedTemplates, showCustom: q.length > 0 };
+  }, [searchText, workItems, templates]);
 
   // Totals
   const totalCost = useMemo(() => items.reduce((s, x) => s + itemCostTotal(x), 0), [items]);
@@ -119,21 +134,79 @@ export default function ProjectCockpitPage() {
     return groups;
   }, [items]);
 
-  const handleAddItem = async () => {
-    if (selectedMasterId === "") { setMessage("工事項目を選択してください"); return; }
+  const handleSelectMaster = (wi: WorkItemMaster) => {
+    setSelectedMaster(wi);
+    setSearchText(wi.item_name);
+    setAddCost(String(wi.cost_price));
+    setAddSelling(String(wi.selling_price));
+    setCustomUnit(wi.unit);
+    setIsCustomItem(false);
+    setShowSuggestions(false);
+  };
+
+  const handleSelectCustom = () => {
+    setSelectedMaster(null);
+    setIsCustomItem(true);
+    setShowSuggestions(false);
+  };
+
+  const handleSelectTemplate = async (template: EstimateTemplate) => {
+    setShowSuggestions(false);
+    setSearchText("");
     setAdding(true);
     setMessage("");
     try {
-      await createProjectItem(projectId, {
-        master_item_id: Number(selectedMasterId),
-        quantity: safeNum(addQty) || 1,
-        cost_price: addCost ? safeNum(addCost) : undefined,
-        selling_price: addSelling ? safeNum(addSelling) : undefined,
-      });
-      setSelectedMasterId("");
-      setAddQty("1");
-      setAddCost("");
-      setAddSelling("");
+      await addTemplateToProject(projectId, template.id);
+      await load();
+      setMessage(`テンプレート「${template.name}」から${template.items.length}項目を追加しました`);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "テンプレート追加失敗");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const resetAddForm = () => {
+    setSearchText("");
+    setSelectedMaster(null);
+    setIsCustomItem(false);
+    setCustomCategory("");
+    setCustomUnit("式");
+    setAddQty("1");
+    setAddCost("");
+    setAddSelling("");
+  };
+
+  const handleAddItem = async () => {
+    if (!selectedMaster && !isCustomItem) {
+      setMessage("工事項目を選択するか、カスタム項目名を入力してください");
+      return;
+    }
+    if (isCustomItem && !searchText.trim()) {
+      setMessage("項目名を入力してください");
+      return;
+    }
+    setAdding(true);
+    setMessage("");
+    try {
+      if (selectedMaster) {
+        await createProjectItem(projectId, {
+          master_item_id: selectedMaster.id,
+          quantity: safeNum(addQty) || 1,
+          cost_price: addCost ? safeNum(addCost) : undefined,
+          selling_price: addSelling ? safeNum(addSelling) : undefined,
+        });
+      } else {
+        await createProjectItem(projectId, {
+          category: customCategory.trim() || "その他",
+          item_name: searchText.trim(),
+          unit: customUnit.trim() || "式",
+          quantity: safeNum(addQty) || 1,
+          cost_price: addCost ? safeNum(addCost) : 0,
+          selling_price: addSelling ? safeNum(addSelling) : 0,
+        });
+      }
+      resetAddForm();
       await load();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "追加失敗");
@@ -225,10 +298,15 @@ export default function ProjectCockpitPage() {
     }
   };
 
-  const handleExportPdf = async () => {
+  const handleExportPdf = () => {
     try {
-      const { blob } = await exportEstimate(projectId);
-      downloadBlob(blob, `estimate_${projectId}.pdf`);
+      const html = exportEstimateHtml(projectId);
+      const w = window.open("", "_blank");
+      if (w) {
+        w.document.write(html);
+        w.document.close();
+        setTimeout(() => w.print(), 500);
+      }
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "PDF出力失敗");
     }
@@ -252,7 +330,7 @@ export default function ProjectCockpitPage() {
           </p>
         </div>
         <div className="cockpit-actions">
-          <button className="btn" onClick={handleExportPdf}>PDF出力</button>
+          <button className="btn" onClick={handleExportPdf}>見積書印刷</button>
           <Link href="/projects" className="btn" style={{ textDecoration: "none" }}>一覧に戻る</Link>
         </div>
       </div>
@@ -306,34 +384,113 @@ export default function ProjectCockpitPage() {
       {/* Estimate Tab */}
       {tab === "estimate" && (
         <div className="card">
-          {/* Add item form */}
-          <div style={{ display: "flex", gap: "var(--sp-2)", flexWrap: "wrap", alignItems: "flex-end", marginBottom: "var(--sp-4)" }}>
-            <label style={{ flex: "1 1 200px" }}>
-              工事項目
-              <select value={selectedMasterId} onChange={(e) => setSelectedMasterId(e.target.value ? Number(e.target.value) : "")}>
-                <option value="">マスタから選択</option>
-                {workItems.map((wi) => (
-                  <option key={wi.id} value={wi.id}>
-                    [{wi.category}] {wi.item_name} （原価¥{wi.cost_price.toLocaleString()} → 売値¥{wi.selling_price.toLocaleString()}）
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label style={{ width: 70 }}>
-              数量
-              <input type="number" value={addQty} onChange={(e) => setAddQty(e.target.value)} min="1" />
-            </label>
-            <label style={{ width: 100 }}>
-              原価
-              <input type="number" value={addCost} onChange={(e) => setAddCost(e.target.value)} placeholder="自動" />
-            </label>
-            <label style={{ width: 100 }}>
-              売値
-              <input type="number" value={addSelling} onChange={(e) => setAddSelling(e.target.value)} placeholder="自動" />
-            </label>
-            <button className="btn btn-primary" onClick={() => void handleAddItem()} disabled={adding}>
-              {adding ? "追加中..." : "追加"}
-            </button>
+          {/* Search-based add item form */}
+          <div style={{ marginBottom: "var(--sp-4)" }}>
+            {/* Selected item indicator */}
+            {(selectedMaster || isCustomItem) && (
+              <div className="ac-selected">
+                <span className="ac-selected-name">
+                  {selectedMaster ? `${selectedMaster.item_name}` : `カスタム: ${searchText}`}
+                </span>
+                {selectedMaster && (
+                  <span style={{ fontSize: 11, color: "var(--c-text-3)" }}>
+                    原価¥{selectedMaster.cost_price.toLocaleString()} → 売値¥{selectedMaster.selling_price.toLocaleString()}/{selectedMaster.unit}
+                  </span>
+                )}
+                <span className="ac-clear" onClick={resetAddForm}>&times;</span>
+              </div>
+            )}
+
+            {/* Search input with autocomplete */}
+            <div className="ac-wrap">
+              <input
+                className="ac-input"
+                value={searchText}
+                onChange={(e) => {
+                  setSearchText(e.target.value);
+                  setSelectedMaster(null);
+                  setIsCustomItem(false);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => { if (searchText.trim()) setShowSuggestions(true); }}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                placeholder="工事項目を検索... （例: クロス, ユニットバス, 3LDKフルリノベ）"
+              />
+
+              {showSuggestions && searchText.trim() && (
+                <div className="ac-list">
+                  {/* Template matches */}
+                  {suggestions.templates.length > 0 && (
+                    <>
+                      <div className="ac-section">テンプレート（一括追加）</div>
+                      {suggestions.templates.map((t) => (
+                        <div key={t.id} className="ac-item ac-item-tpl" onMouseDown={() => void handleSelectTemplate(t)}>
+                          <span className="ac-tag">{t.items.length}項目</span>
+                          <span className="ac-item-name">{t.name}</span>
+                          <span className="ac-item-meta">{t.description}</span>
+                        </div>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Master item matches */}
+                  {suggestions.items.length > 0 && (
+                    <>
+                      <div className="ac-section">工事項目マスタ</div>
+                      {suggestions.items.map((wi) => (
+                        <div key={wi.id} className="ac-item" onMouseDown={() => handleSelectMaster(wi)}>
+                          <span className="ac-item-name">{wi.item_name}</span>
+                          <span className="ac-item-meta">
+                            [{wi.category}] ¥{wi.cost_price.toLocaleString()}→¥{wi.selling_price.toLocaleString()}/{wi.unit}
+                          </span>
+                        </div>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Custom item option */}
+                  {suggestions.showCustom && (
+                    <>
+                      <div className="ac-section">カスタム</div>
+                      <div className="ac-item ac-item-custom" onMouseDown={handleSelectCustom}>
+                        <span className="ac-item-name">「{searchText.trim()}」をカスタム項目として追加</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Detail fields */}
+            <div style={{ display: "flex", gap: "var(--sp-2)", flexWrap: "wrap", alignItems: "flex-end", marginTop: "var(--sp-2)" }}>
+              {isCustomItem && (
+                <>
+                  <label style={{ width: 100 }}>
+                    カテゴリ
+                    <input value={customCategory} onChange={(e) => setCustomCategory(e.target.value)} placeholder="その他" />
+                  </label>
+                  <label style={{ width: 60 }}>
+                    単位
+                    <input value={customUnit} onChange={(e) => setCustomUnit(e.target.value)} placeholder="式" />
+                  </label>
+                </>
+              )}
+              <label style={{ width: 70 }}>
+                数量
+                <input type="number" value={addQty} onChange={(e) => setAddQty(e.target.value)} min="1" />
+              </label>
+              <label style={{ width: 100 }}>
+                原価
+                <input type="number" value={addCost} onChange={(e) => setAddCost(e.target.value)} placeholder="自動" />
+              </label>
+              <label style={{ width: 100 }}>
+                売値
+                <input type="number" value={addSelling} onChange={(e) => setAddSelling(e.target.value)} placeholder="自動" />
+              </label>
+              <button className="btn btn-primary" onClick={() => void handleAddItem()} disabled={adding || (!selectedMaster && !isCustomItem)}>
+                {adding ? "追加中..." : "追加"}
+              </button>
+            </div>
           </div>
 
           {/* Items table */}
