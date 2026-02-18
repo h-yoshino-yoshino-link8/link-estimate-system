@@ -1,2 +1,18 @@
-.vercel
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+out/
+
+# Vercel
+.vercel/
+
+# Environment
 .env*.local
+
+# TypeScript
+tsconfig.tsbuildinfo
+
+# OS
+.DS_Store

@@ -27,11 +27,14 @@ export default function ProjectsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
 
-  // Quick create
-  const [customerName, setCustomerName] = useState("");
-  const [projectName, setProjectName] = useState("");
-  const [siteAddress, setSiteAddress] = useState("");
+  // Quick create - 案件名1つだけ
+  const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+
+  // Detail fields (optional, hidden by default)
+  const [customerName, setCustomerName] = useState("");
+  const [siteAddress, setSiteAddress] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -71,22 +74,24 @@ export default function ProjectsPage() {
     return list;
   }, [projects, statusFilter, search]);
 
-  const handleQuickCreate = async () => {
-    if (!customerName.trim() || !projectName.trim()) {
-      setMessage("顧客名と案件名を入力してください");
+  const handleCreate = async () => {
+    const name = newName.trim();
+    if (!name) {
+      setMessage("案件名を入力してください");
       return;
     }
     setCreating(true);
     setMessage("");
     try {
       await createProjectQuick({
-        customer_name: customerName.trim(),
-        project_name: projectName.trim(),
+        customer_name: customerName.trim() || "未設定",
+        project_name: name,
         site_address: siteAddress.trim() || undefined,
       });
+      setNewName("");
       setCustomerName("");
-      setProjectName("");
       setSiteAddress("");
+      setShowForm(false);
       await load();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "作成失敗");
@@ -102,31 +107,52 @@ export default function ProjectsPage() {
         <button className="btn" onClick={() => void load()} disabled={loading}>更新</button>
       </div>
 
-      {/* Quick create - 1行で案件作成 */}
-      <div className="quick-create">
-        <input
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
-          placeholder="顧客名"
-          style={{ flex: "0 0 160px" }}
-        />
-        <input
-          value={projectName}
-          onChange={(e) => setProjectName(e.target.value)}
-          placeholder="案件名（例: 桜台2F 原状回復）"
-          style={{ flex: 1 }}
-          onKeyDown={(e) => { if (e.key === "Enter") void handleQuickCreate(); }}
-        />
-        <input
-          value={siteAddress}
-          onChange={(e) => setSiteAddress(e.target.value)}
-          placeholder="現場住所（任意）"
-          style={{ flex: "0 0 200px" }}
-          onKeyDown={(e) => { if (e.key === "Enter") void handleQuickCreate(); }}
-        />
-        <button className="btn btn-primary" onClick={() => void handleQuickCreate()} disabled={creating}>
-          {creating ? "..." : "作成"}
-        </button>
+      {/* 新規作成 - 大きいボタン + インライン入力 */}
+      <div className="new-project-section">
+        <div className="new-project-main">
+          <input
+            className="new-project-input"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="新しい案件名を入力（例: 桜台2F 原状回復）"
+            onKeyDown={(e) => { if (e.key === "Enter") void handleCreate(); }}
+            autoFocus
+          />
+          <button
+            className="btn btn-primary btn-lg"
+            onClick={() => void handleCreate()}
+            disabled={creating || !newName.trim()}
+          >
+            {creating ? "作成中..." : "+ 新規作成"}
+          </button>
+        </div>
+        {newName.trim() && (
+          <div className="new-project-detail">
+            <button
+              className="btn-text"
+              onClick={() => setShowForm(!showForm)}
+              type="button"
+            >
+              {showForm ? "▲ 詳細を閉じる" : "▼ 顧客名・住所も入力する"}
+            </button>
+            {showForm && (
+              <div className="new-project-fields">
+                <input
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="顧客名（空欄なら「未設定」）"
+                  onKeyDown={(e) => { if (e.key === "Enter") void handleCreate(); }}
+                />
+                <input
+                  value={siteAddress}
+                  onChange={(e) => setSiteAddress(e.target.value)}
+                  placeholder="現場住所（任意）"
+                  onKeyDown={(e) => { if (e.key === "Enter") void handleCreate(); }}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Status filter */}
@@ -158,42 +184,29 @@ export default function ProjectsPage() {
         />
       )}
 
-      {/* Projects table */}
-      <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>案件名</th>
-              <th>顧客</th>
-              <th>現場</th>
-              <th>ステータス</th>
-              <th style={{ width: 60 }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr className="empty-row">
-                <td colSpan={5}>
-                  {loading ? "読み込み中..." : "案件がありません。上のフォームから作成してください。"}
-                </td>
-              </tr>
-            ) : (
-              filtered.map((p) => (
-                <tr key={p.project_id}>
-                  <td style={{ fontWeight: 500 }}>{p.project_name}</td>
-                  <td>{p.customer_name}</td>
-                  <td style={{ fontSize: 12, color: "var(--c-text-3)" }}>{p.site_address ?? "-"}</td>
-                  <td><span className={statusBadgeClass(p.project_status)}>{p.project_status}</span></td>
-                  <td>
-                    <Link href={`/projects/${p.project_id}`} className="btn btn-sm" style={{ textDecoration: "none" }}>
-                      開く
-                    </Link>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      {/* Projects list - カード形式 */}
+      <div className="project-list">
+        {filtered.length === 0 ? (
+          <div className="empty-state">
+            {loading ? "読み込み中..." : "案件がありません。上のフォームから作成してください。"}
+          </div>
+        ) : (
+          filtered.map((p) => (
+            <Link
+              key={p.project_id}
+              href={`/projects/${p.project_id}`}
+              className="project-card"
+            >
+              <div className="project-card-main">
+                <div className="project-card-name">{p.project_name}</div>
+                <div className="project-card-meta">
+                  {p.customer_name}{p.site_address ? ` / ${p.site_address}` : ""}
+                </div>
+              </div>
+              <span className={statusBadgeClass(p.project_status)}>{p.project_status}</span>
+            </Link>
+          ))
+        )}
       </div>
 
       {message && (

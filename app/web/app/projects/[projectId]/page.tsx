@@ -336,9 +336,33 @@ export default function ProjectCockpitPage() {
     }
   };
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     try {
-      const html = exportEstimateHtml(projectId, { staffName });
+      const html = await exportEstimateHtml(projectId, { staffName });
+      // html2pdf.jsでPDF直接ダウンロード
+      const html2pdf = (await import("html2pdf.js")).default;
+      const container = document.createElement("div");
+      container.innerHTML = html;
+      document.body.appendChild(container);
+      const fileName = `見積書_${project?.project_name ?? projectId}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      await html2pdf().set({
+        margin: 0,
+        filename: fileName,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        pagebreak: { mode: ["css", "legacy"] },
+      }).from(container).save();
+      document.body.removeChild(container);
+      setMessage("PDFをダウンロードしました");
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "PDF出力失敗");
+    }
+  };
+
+  const handlePrintPdf = async () => {
+    try {
+      const html = await exportEstimateHtml(projectId, { staffName });
       const w = window.open("", "_blank");
       if (w) {
         w.document.write(html);
@@ -346,7 +370,7 @@ export default function ProjectCockpitPage() {
         setTimeout(() => w.print(), 500);
       }
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "PDF出力失敗");
+      setMessage(e instanceof Error ? e.message : "印刷失敗");
     }
   };
 
@@ -469,7 +493,8 @@ export default function ProjectCockpitPage() {
             placeholder="担当者名"
             style={{ width: 120, padding: "4px 8px", fontSize: 12, border: "1px solid var(--c-border)", borderRadius: 4 }}
           />
-          <button className="btn" onClick={handleExportPdf}>見積書印刷</button>
+          <button className="btn btn-primary" onClick={handleExportPdf}>PDF保存</button>
+          <button className="btn" onClick={handlePrintPdf}>印刷</button>
           <Link href="/projects" className="btn" style={{ textDecoration: "none" }}>一覧に戻る</Link>
         </div>
       </div>

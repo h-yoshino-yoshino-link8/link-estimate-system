@@ -384,25 +384,193 @@ tr.is-dragging { opacity: 0.4; }
 tr.drag-over-above td { box-shadow: inset 0 2px 0 0 var(--c-primary); }
 tr.drag-over-below td { box-shadow: inset 0 -2px 0 0 var(--c-primary); }
 
-/* Quick create bar */
-.quick-create {
+/* --- New Project Section --- */
+.new-project-section {
+  background: var(--c-surface);
+  border: 2px dashed var(--c-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4) var(--sp-5);
+}
+.new-project-main {
   display: flex;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
   align-items: center;
-  padding: 10px 14px;
-  background: var(--c-surface-2);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius);
 }
-.quick-create input {
-  padding: 7px 10px;
-  font-size: 13px;
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius);
-  background: #fff;
+.new-project-input {
+  flex: 1;
+  height: 44px !important;
+  font-size: 15px !important;
+  font-weight: 500;
+  padding: 0 var(--sp-4) !important;
+  border: 2px solid var(--c-border) !important;
+  border-radius: var(--r-md) !important;
 }
-.quick-create input:focus {
+.new-project-input:focus {
+  border-color: var(--c-primary) !important;
+}
+.new-project-input::placeholder { color: var(--c-text-4); font-weight: 400; }
+.btn-lg {
+  height: 44px !important;
+  padding: 0 24px !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  border-radius: var(--r-md) !important;
+}
+.new-project-detail {
+  margin-top: var(--sp-3);
+}
+.btn-text {
+  background: none;
+  border: none;
+  color: var(--c-text-3);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 0;
+  font-family: var(--font);
+}
+.btn-text:hover { color: var(--c-primary); }
+.new-project-fields {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+.new-project-fields input {
+  flex: 1;
+}
+
+/* --- Project Cards --- */
+.project-list {
+  display: grid;
+  gap: var(--sp-2);
+}
+.project-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  text-decoration: none;
+  color: var(--c-text);
+  transition: all 0.15s;
+  cursor: pointer;
+}
+.project-card:hover {
   border-color: var(--c-primary);
+  box-shadow: 0 0 0 1px var(--c-primary), var(--shadow-sm);
+}
+.project-card-main { flex: 1; min-width: 0; }
+.project-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.project-card-meta {
+  font-size: 12px;
+  color: var(--c-text-3);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================================
+   Topbar Actions (user info + logout)
+   ============================================================ */
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.topbar-user {
+  font-size: 13px;
+  color: var(--c-text-3);
+}
+
+/* ============================================================
+   Auth Pages (login / signup)
+   ============================================================ */
+.auth-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: var(--c-bg);
+  padding: 20px;
+}
+.auth-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 40px 32px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+}
+.auth-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.auth-brand .brand-mark {
+  font-size: 24px;
+  color: var(--c-primary);
+}
+.auth-brand .brand-text {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--c-text);
+}
+.auth-card h1 {
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+  margin: 0 0 24px;
+  color: var(--c-text);
+}
+.auth-card label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--c-text-2);
+  margin-bottom: 16px;
+}
+.auth-card label input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.15s;
+}
+.auth-card label input:focus {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(30,64,175,0.1);
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px var(--c-primary-ring);
+}
+.auth-card .btn {
+  margin-top: 8px;
+}
+.auth-link {
+  text-align: center;
+  font-size: 13px;
+  color: var(--c-text-3);
+  margin-top: 20px;
+}
+.auth-link a {
+  color: var(--c-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+.auth-link a:hover {
+  text-decoration: underline;
 }
