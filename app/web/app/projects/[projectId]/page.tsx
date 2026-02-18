@@ -31,6 +31,12 @@ function pct(value: number) {
 
 function safeNum(v: unknown) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
 
+function mrClass(rate: number) {
+  if (rate >= 30) return "margin-rate is-good";
+  if (rate >= 20) return "margin-rate is-ok";
+  return "margin-rate is-low";
+}
+
 type Tab = "estimate" | "invoice" | "payment";
 
 export default function ProjectCockpitPage() {
@@ -394,7 +400,11 @@ export default function ProjectCockpitPage() {
                 </span>
                 {selectedMaster && (
                   <span style={{ fontSize: 11, color: "var(--c-text-3)" }}>
-                    原価¥{selectedMaster.cost_price.toLocaleString()} → 売値¥{selectedMaster.selling_price.toLocaleString()}/{selectedMaster.unit}
+                    ¥{selectedMaster.selling_price.toLocaleString()}/{selectedMaster.unit}
+                    {" "}(原価¥{selectedMaster.cost_price.toLocaleString()}{" "}
+                    <span className={mrClass(marginRate(selectedMaster.selling_price, selectedMaster.cost_price))}>
+                      粗利{pct(marginRate(selectedMaster.selling_price, selectedMaster.cost_price))}
+                    </span>)
                   </span>
                 )}
                 <span className="ac-clear" onClick={resetAddForm}>&times;</span>
@@ -441,7 +451,10 @@ export default function ProjectCockpitPage() {
                         <div key={wi.id} className="ac-item" onMouseDown={() => handleSelectMaster(wi)}>
                           <span className="ac-item-name">{wi.item_name}</span>
                           <span className="ac-item-meta">
-                            [{wi.category}] ¥{wi.cost_price.toLocaleString()}→¥{wi.selling_price.toLocaleString()}/{wi.unit}
+                            [{wi.category}] ¥{wi.selling_price.toLocaleString()}/{wi.unit}{" "}
+                            <span className={mrClass(marginRate(wi.selling_price, wi.cost_price))}>
+                              {pct(marginRate(wi.selling_price, wi.cost_price))}
+                            </span>
                           </span>
                         </div>
                       ))}
@@ -480,12 +493,12 @@ export default function ProjectCockpitPage() {
                 <input type="number" value={addQty} onChange={(e) => setAddQty(e.target.value)} min="1" />
               </label>
               <label style={{ width: 100 }}>
-                原価
-                <input type="number" value={addCost} onChange={(e) => setAddCost(e.target.value)} placeholder="自動" />
+                売値単価
+                <input type="number" value={addSelling} onChange={(e) => setAddSelling(e.target.value)} placeholder="自動" />
               </label>
               <label style={{ width: 100 }}>
-                売値
-                <input type="number" value={addSelling} onChange={(e) => setAddSelling(e.target.value)} placeholder="自動" />
+                原価単価
+                <input type="number" value={addCost} onChange={(e) => setAddCost(e.target.value)} placeholder="自動" />
               </label>
               <button className="btn btn-primary" onClick={() => void handleAddItem()} disabled={adding || (!selectedMaster && !isCustomItem)}>
                 {adding ? "追加中..." : "追加"}
@@ -493,59 +506,82 @@ export default function ProjectCockpitPage() {
             </div>
           </div>
 
-          {/* Items table */}
+          {/* Items table — 売値先行・粗利率%付き */}
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr>
-                  <th>カテゴリ</th>
                   <th>項目名</th>
-                  <th>単位</th>
                   <th className="text-right">数量</th>
-                  <th className="text-right">原価単価</th>
-                  <th className="text-right">売値単価</th>
-                  <th className="text-right">原価小計</th>
-                  <th className="text-right">売値小計</th>
+                  <th>単位</th>
+                  <th className="text-right">単価</th>
+                  <th className="text-right">金額</th>
+                  <th className="text-right">原価計</th>
                   <th className="text-right">粗利</th>
+                  <th className="text-right">粗利率</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 {items.length === 0 ? (
-                  <tr className="empty-row"><td colSpan={10}>明細がありません。上のフォームから追加してください。</td></tr>
+                  <tr className="empty-row"><td colSpan={9}>明細がありません。上のフォームから追加してください。</td></tr>
                 ) : (
                   <>
                     {Array.from(groupedItems.entries()).map(([cat, catItems]) => {
                       const catCost = catItems.reduce((s, x) => s + itemCostTotal(x), 0);
                       const catSelling = catItems.reduce((s, x) => s + itemSellingTotal(x), 0);
+                      const catMargin = catSelling - catCost;
+                      const catRate = marginRate(catSelling, catCost);
                       return (
                         <React.Fragment key={cat}>
-                          {catItems.map((item) => (
-                            <tr key={item.id}>
-                              <td style={{ fontSize: 11, color: "var(--c-text-3)" }}>{item.category}</td>
-                              <td style={{ fontWeight: 500 }}>{item.item_name}</td>
-                              <td>{item.unit}</td>
-                              <td className="text-right">{item.quantity}</td>
-                              <td className="text-right">{yen(item.cost_price)}</td>
-                              <td className="text-right">{yen(item.selling_price)}</td>
-                              <td className="text-right">{yen(itemCostTotal(item))}</td>
-                              <td className="text-right">{yen(itemSellingTotal(item))}</td>
-                              <td className="text-right" style={{ fontWeight: 600, color: itemMargin(item) >= 0 ? "var(--c-success)" : "var(--c-error)" }}>
-                                {yen(itemMargin(item))}
-                              </td>
-                              <td>
-                                <button className="btn btn-sm btn-danger" onClick={() => void handleDeleteItem(item.id)}>削除</button>
-                              </td>
-                            </tr>
-                          ))}
+                          <tr className="group-header">
+                            <td colSpan={9}>{cat}（{catItems.length}項目）</td>
+                          </tr>
+                          {catItems.map((item) => {
+                            const iSelling = itemSellingTotal(item);
+                            const iCost = itemCostTotal(item);
+                            const iMar = itemMargin(item);
+                            const iRate = marginRate(iSelling, iCost);
+                            return (
+                              <tr key={item.id}>
+                                <td style={{ fontWeight: 500 }}>{item.item_name}</td>
+                                <td className="text-right">{item.quantity}</td>
+                                <td>{item.unit}</td>
+                                <td className="text-right">
+                                  {yen(item.selling_price)}
+                                  <span className="cost-sub">原{yen(item.cost_price)}</span>
+                                </td>
+                                <td className="text-right" style={{ fontWeight: 600 }}>{yen(iSelling)}</td>
+                                <td className="text-right" style={{ fontSize: 12, color: "var(--c-text-3)" }}>{yen(iCost)}</td>
+                                <td className="text-right" style={{ fontWeight: 600, color: iMar >= 0 ? "var(--c-success)" : "var(--c-error)" }}>
+                                  {yen(iMar)}
+                                </td>
+                                <td className="text-right">
+                                  <span className={mrClass(iRate)}>{pct(iRate)}</span>
+                                </td>
+                                <td>
+                                  <button className="btn btn-sm btn-danger" onClick={() => void handleDeleteItem(item.id)}>削除</button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          <tr style={{ background: "var(--c-bg)", fontSize: 12 }}>
+                            <td colSpan={4} style={{ fontWeight: 600, color: "var(--c-text-3)", textAlign: "right" }}>{cat} 小計</td>
+                            <td className="text-right" style={{ fontWeight: 700 }}>{yen(catSelling)}</td>
+                            <td className="text-right" style={{ color: "var(--c-text-3)" }}>{yen(catCost)}</td>
+                            <td className="text-right" style={{ fontWeight: 600, color: catMargin >= 0 ? "var(--c-success)" : "var(--c-error)" }}>{yen(catMargin)}</td>
+                            <td className="text-right"><span className={mrClass(catRate)}>{pct(catRate)}</span></td>
+                            <td></td>
+                          </tr>
                         </React.Fragment>
                       );
                     })}
                     <tr className="table-total-row">
-                      <td colSpan={6} style={{ fontWeight: 700 }}>合計</td>
+                      <td colSpan={4} style={{ fontWeight: 700 }}>合計</td>
+                      <td className="text-right" style={{ fontWeight: 700, fontSize: 14 }}>{yen(totalSelling)}</td>
                       <td className="text-right">{yen(totalCost)}</td>
-                      <td className="text-right">{yen(totalSelling)}</td>
-                      <td className="text-right">{yen(totalMargin)} ({pct(totalMarginRate)})</td>
+                      <td className="text-right" style={{ fontWeight: 700, color: totalMargin >= 0 ? "var(--c-success)" : "var(--c-error)" }}>{yen(totalMargin)}</td>
+                      <td className="text-right"><span className={mrClass(totalMarginRate)}>{pct(totalMarginRate)}</span></td>
                       <td></td>
                     </tr>
                   </>

@@ -302,6 +302,20 @@ textarea { height: auto; min-height: 60px; padding: var(--sp-2) var(--sp-3); res
 .ac-clear { font-size: 18px; cursor: pointer; color: var(--c-text-3); padding: 0 4px; line-height: 1; }
 .ac-clear:hover { color: var(--c-error); }
 
+/* --- Margin Rate Badge --- */
+.margin-rate { font-weight: 700; font-size: 12px; }
+.margin-rate.is-good { color: var(--c-success); }
+.margin-rate.is-ok { color: var(--c-text-2); }
+.margin-rate.is-low { color: var(--c-error); }
+
+/* --- Group Header Row --- */
+.table .group-header td {
+  background: var(--c-bg); font-weight: 700; font-size: 12px;
+  color: var(--c-text-2); padding: 6px var(--sp-3);
+  border-bottom: 1px solid var(--c-border); letter-spacing: 0.02em;
+}
+.table .cost-sub { display: block; font-size: 10px; color: var(--c-text-4); font-weight: 400; margin-top: 1px; }
+
 /* --- Mobile --- */
 .mobile-menu-btn {
   display: none; align-items: center; justify-content: center;
