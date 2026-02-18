@@ -3,10 +3,10 @@
 import React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getProject, getProjectItems, getWorkItems, getInvoices, getPayments, getVendors,
-  createProjectItem, updateProjectItem, deleteProjectItem,
+  createProjectItem, updateProjectItem, deleteProjectItem, reorderProjectItems,
   createInvoice, updateInvoice,
   createPayment, updatePayment,
   updateProjectStatus, exportEstimateHtml,
@@ -70,6 +70,12 @@ export default function ProjectCockpitPage() {
 
   // PDF export staff name
   const [staffName, setStaffName] = useState("吉野 博");
+
+  // Drag & Drop state
+  const [dragItemId, setDragItemId] = useState<number | null>(null);
+  const [dragOverItemId, setDragOverItemId] = useState<number | null>(null);
+  const [dragOverPos, setDragOverPos] = useState<"above" | "below" | null>(null);
+  const dragCounterRef = useRef(0);
 
   // Invoice form
   const [invAmount, setInvAmount] = useState("");
@@ -344,6 +350,100 @@ export default function ProjectCockpitPage() {
     }
   };
 
+  // --- Drag & Drop handlers ---
+  const handleDragStart = useCallback((e: React.DragEvent<HTMLTableRowElement>, itemId: number) => {
+    setDragItemId(itemId);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(itemId));
+    // 少し遅延してクラスを付与（ブラウザがドラッグイメージをキャプチャした後）
+    requestAnimationFrame(() => {
+      const row = e.currentTarget;
+      row.classList.add("is-dragging");
+    });
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    setDragItemId(null);
+    setDragOverItemId(null);
+    setDragOverPos(null);
+    dragCounterRef.current = 0;
+    // 全行からクラスを除去
+    document.querySelectorAll("tr.is-dragging").forEach((el) => el.classList.remove("is-dragging"));
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLTableRowElement>, itemId: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragItemId === null || dragItemId === itemId) {
+      setDragOverItemId(null);
+      setDragOverPos(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const pos = e.clientY < midY ? "above" : "below";
+    setDragOverItemId(itemId);
+    setDragOverPos(pos);
+  }, [dragItemId]);
+
+  const handleDragEnter = useCallback((e: React.DragEvent<HTMLTableRowElement>) => {
+    e.preventDefault();
+    dragCounterRef.current++;
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLTableRowElement>) => {
+    dragCounterRef.current--;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      // 行を離れた場合、この行のハイライトをクリア
+      const targetRow = e.currentTarget;
+      const relatedTarget = e.relatedTarget as Node | null;
+      if (!relatedTarget || !targetRow.contains(relatedTarget)) {
+        // 現在のdragOverItemIdがこの行のIDなら解除
+      }
+    }
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent<HTMLTableRowElement>, targetItemId: number) => {
+    e.preventDefault();
+    if (dragItemId === null || dragItemId === targetItemId) {
+      handleDragEnd();
+      return;
+    }
+
+    // 現在のitems配列（フラット、sort_order順）をコピー
+    const currentIds = items.map((it) => it.id);
+    const fromIdx = currentIds.indexOf(dragItemId);
+    const toIdx = currentIds.indexOf(targetItemId);
+
+    if (fromIdx === -1 || toIdx === -1) {
+      handleDragEnd();
+      return;
+    }
+
+    // ドラッグ元を取り除く
+    const newIds = [...currentIds];
+    newIds.splice(fromIdx, 1);
+
+    // 挿入位置を計算
+    let insertIdx = newIds.indexOf(targetItemId);
+    if (dragOverPos === "below") {
+      insertIdx += 1;
+    }
+
+    newIds.splice(insertIdx, 0, dragItemId);
+
+    handleDragEnd();
+
+    // 並び順を保存
+    try {
+      await reorderProjectItems(projectId, newIds);
+      await load();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "並び替え失敗");
+    }
+  }, [dragItemId, dragOverPos, items, projectId]);
+
   if (loading && !project) {
     return <main className="page"><p style={{ textAlign: "center", padding: 40, color: "var(--c-text-4)" }}>読み込み中...</p></main>;
   }
@@ -545,6 +645,7 @@ export default function ProjectCockpitPage() {
             <table className="table">
               <thead>
                 <tr>
+                  <th style={{ width: 28 }}></th>
                   <th>項目名</th>
                   <th className="text-right">数量</th>
                   <th>単位</th>
@@ -558,7 +659,7 @@ export default function ProjectCockpitPage() {
               </thead>
               <tbody>
                 {items.length === 0 ? (
-                  <tr className="empty-row"><td colSpan={9}>明細がありません。上のフォームから追加してください。</td></tr>
+                  <tr className="empty-row"><td colSpan={10}>明細がありません。上のフォームから追加してください。</td></tr>
                 ) : (
                   <>
                     {Array.from(groupedItems.entries()).map(([cat, catItems]) => {
@@ -569,7 +670,7 @@ export default function ProjectCockpitPage() {
                       return (
                         <React.Fragment key={cat}>
                           <tr className="group-header">
-                            <td colSpan={9}>{cat}（{catItems.length}項目）</td>
+                            <td colSpan={10}>{cat}（{catItems.length}項目）</td>
                           </tr>
                           {catItems.map((item) => {
                             const iSelling = itemSellingTotal(item);
@@ -580,7 +681,24 @@ export default function ProjectCockpitPage() {
                             const isEditingSelling = editingCell?.itemId === item.id && editingCell.field === 'selling_price';
                             const isEditingCost = editingCell?.itemId === item.id && editingCell.field === 'cost_price';
                             return (
-                              <tr key={item.id}>
+                              <tr
+                                key={item.id}
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, item.id)}
+                                onDragEnd={handleDragEnd}
+                                onDragOver={(e) => handleDragOver(e, item.id)}
+                                onDragEnter={handleDragEnter}
+                                onDragLeave={handleDragLeave}
+                                onDrop={(e) => void handleDrop(e, item.id)}
+                                className={[
+                                  dragItemId === item.id ? "is-dragging" : "",
+                                  dragOverItemId === item.id && dragOverPos === "above" ? "drag-over-above" : "",
+                                  dragOverItemId === item.id && dragOverPos === "below" ? "drag-over-below" : "",
+                                ].filter(Boolean).join(" ") || undefined}
+                              >
+                                <td style={{ width: 28, textAlign: "center" }}>
+                                  <span className="drag-handle" title="ドラッグして並べ替え">&#x2807;</span>
+                                </td>
                                 <td style={{ fontWeight: 500 }}>{item.item_name}</td>
                                 <td className={`text-right editable-cell`} onClick={() => !isEditingQty && startEditing(item, 'quantity')}>
                                   {isEditingQty ? (
@@ -646,7 +764,7 @@ export default function ProjectCockpitPage() {
                             );
                           })}
                           <tr style={{ background: "var(--c-bg)", fontSize: 12 }}>
-                            <td colSpan={4} style={{ fontWeight: 600, color: "var(--c-text-3)", textAlign: "right" }}>{cat} 小計</td>
+                            <td colSpan={5} style={{ fontWeight: 600, color: "var(--c-text-3)", textAlign: "right" }}>{cat} 小計</td>
                             <td className="text-right" style={{ fontWeight: 700 }}>{yen(catSelling)}</td>
                             <td className="text-right" style={{ color: "var(--c-text-3)" }}>{yen(catCost)}</td>
                             <td className="text-right" style={{ fontWeight: 600, color: catMargin >= 0 ? "var(--c-success)" : "var(--c-error)" }}>{yen(catMargin)}</td>
@@ -657,7 +775,7 @@ export default function ProjectCockpitPage() {
                       );
                     })}
                     <tr className="table-total-row">
-                      <td colSpan={4} style={{ fontWeight: 700 }}>合計</td>
+                      <td colSpan={5} style={{ fontWeight: 700 }}>合計</td>
                       <td className="text-right" style={{ fontWeight: 700, fontSize: 14 }}>{yen(totalSelling)}</td>
                       <td className="text-right">{yen(totalCost)}</td>
                       <td className="text-right" style={{ fontWeight: 700, color: totalMargin >= 0 ? "var(--c-success)" : "var(--c-error)" }}>{yen(totalMargin)}</td>

@@ -377,6 +377,13 @@ textarea { height: auto; min-height: 60px; padding: var(--sp-2) var(--sp-3); res
   .quick-create input { flex: 1 1 140px !important; }
 }
 
+/* --- Drag & Drop reorder --- */
+.drag-handle { cursor: grab; color: var(--c-text-4); user-select: none; padding: 0 4px; font-size: 14px; line-height: 1; }
+.drag-handle:active { cursor: grabbing; }
+tr.is-dragging { opacity: 0.4; }
+tr.drag-over-above td { box-shadow: inset 0 2px 0 0 var(--c-primary); }
+tr.drag-over-below td { box-shadow: inset 0 -2px 0 0 var(--c-primary); }
+
 /* Quick create bar */
 .quick-create {
   display: flex;

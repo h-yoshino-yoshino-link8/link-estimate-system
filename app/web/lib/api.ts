@@ -70,6 +70,7 @@ export type ProjectItem = {
   cost_price: number;      // 原価単価
   selling_price: number;   // 売値単価
   vendor_id?: string | null;
+  sort_order: number;      // 表示順序（ドラッグ&ドロップ並べ替え用）
 };
 
 export type Invoice = {
@@ -410,61 +411,61 @@ function seedLocalDb(): LocalDb {
   // 見積明細
   const project_items: ProjectItem[] = [
     // P-001: 完了案件（1K原状回復）
-    { id: 1, project_id: "P-001", category: "内装", item_name: "クロス貼替（量産）", unit: "m2", quantity: 45, cost_price: 850, selling_price: 1400 },
-    { id: 2, project_id: "P-001", category: "内装", item_name: "CF貼替", unit: "m2", quantity: 12, cost_price: 2800, selling_price: 4500 },
-    { id: 3, project_id: "P-001", category: "クリーニング", item_name: "ハウスクリーニング（1K）", unit: "式", quantity: 1, cost_price: 22000, selling_price: 35000 },
-    { id: 4, project_id: "P-001", category: "諸経費", item_name: "廃棄物処理", unit: "式", quantity: 1, cost_price: 15000, selling_price: 25000 },
+    { id: 1, project_id: "P-001", category: "内装", item_name: "クロス貼替（量産）", unit: "m2", quantity: 45, cost_price: 850, selling_price: 1400, sort_order: 0 },
+    { id: 2, project_id: "P-001", category: "内装", item_name: "CF貼替", unit: "m2", quantity: 12, cost_price: 2800, selling_price: 4500, sort_order: 1 },
+    { id: 3, project_id: "P-001", category: "クリーニング", item_name: "ハウスクリーニング（1K）", unit: "式", quantity: 1, cost_price: 22000, selling_price: 35000, sort_order: 2 },
+    { id: 4, project_id: "P-001", category: "諸経費", item_name: "廃棄物処理", unit: "式", quantity: 1, cost_price: 15000, selling_price: 25000, sort_order: 3 },
 
     // P-002: 請求済（1K原状回復）
-    { id: 10, project_id: "P-002", category: "内装", item_name: "クロス貼替（量産）", unit: "m2", quantity: 38, cost_price: 850, selling_price: 1400 },
-    { id: 11, project_id: "P-002", category: "畳・襖", item_name: "畳表替え", unit: "枚", quantity: 6, cost_price: 3900, selling_price: 6500 },
-    { id: 12, project_id: "P-002", category: "畳・襖", item_name: "襖張替え（両面）", unit: "枚", quantity: 4, cost_price: 4000, selling_price: 7000 },
-    { id: 13, project_id: "P-002", category: "クリーニング", item_name: "ハウスクリーニング（1K）", unit: "式", quantity: 1, cost_price: 22000, selling_price: 35000 },
-    { id: 14, project_id: "P-002", category: "諸経費", item_name: "現場管理費", unit: "式", quantity: 1, cost_price: 0, selling_price: 15000 },
+    { id: 10, project_id: "P-002", category: "内装", item_name: "クロス貼替（量産）", unit: "m2", quantity: 38, cost_price: 850, selling_price: 1400, sort_order: 0 },
+    { id: 11, project_id: "P-002", category: "畳・襖", item_name: "畳表替え", unit: "枚", quantity: 6, cost_price: 3900, selling_price: 6500, sort_order: 1 },
+    { id: 12, project_id: "P-002", category: "畳・襖", item_name: "襖張替え（両面）", unit: "枚", quantity: 4, cost_price: 4000, selling_price: 7000, sort_order: 2 },
+    { id: 13, project_id: "P-002", category: "クリーニング", item_name: "ハウスクリーニング（1K）", unit: "式", quantity: 1, cost_price: 22000, selling_price: 35000, sort_order: 3 },
+    { id: 14, project_id: "P-002", category: "諸経費", item_name: "現場管理費", unit: "式", quantity: 1, cost_price: 0, selling_price: 15000, sort_order: 4 },
 
     // P-003: 施工中（戸建リノベ — 大型案件）
-    { id: 20, project_id: "P-003", category: "内装", item_name: "クロス貼替（1000番台）", unit: "m2", quantity: 120, cost_price: 1100, selling_price: 1800 },
-    { id: 21, project_id: "P-003", category: "大工", item_name: "床張替え（フローリング）", unit: "m2", quantity: 65, cost_price: 6000, selling_price: 9500 },
-    { id: 22, project_id: "P-003", category: "設備", item_name: "トイレ交換", unit: "台", quantity: 2, cost_price: 45000, selling_price: 85000 },
-    { id: 23, project_id: "P-003", category: "設備", item_name: "洗面台交換", unit: "台", quantity: 1, cost_price: 35000, selling_price: 65000 },
-    { id: 24, project_id: "P-003", category: "設備", item_name: "給湯器交換", unit: "台", quantity: 1, cost_price: 85000, selling_price: 150000 },
-    { id: 25, project_id: "P-003", category: "塗装", item_name: "室内塗装（壁）", unit: "m2", quantity: 30, cost_price: 1200, selling_price: 2000 },
-    { id: 26, project_id: "P-003", category: "電気", item_name: "照明器具交換", unit: "箇所", quantity: 8, cost_price: 5000, selling_price: 9000 },
-    { id: 27, project_id: "P-003", category: "クリーニング", item_name: "ハウスクリーニング（2DK）", unit: "式", quantity: 1, cost_price: 35000, selling_price: 55000 },
-    { id: 28, project_id: "P-003", category: "諸経費", item_name: "廃棄物処理", unit: "式", quantity: 1, cost_price: 15000, selling_price: 25000 },
-    { id: 29, project_id: "P-003", category: "諸経費", item_name: "現場管理費", unit: "式", quantity: 1, cost_price: 0, selling_price: 30000 },
+    { id: 20, project_id: "P-003", category: "内装", item_name: "クロス貼替（1000番台）", unit: "m2", quantity: 120, cost_price: 1100, selling_price: 1800, sort_order: 0 },
+    { id: 21, project_id: "P-003", category: "大工", item_name: "床張替え（フローリング）", unit: "m2", quantity: 65, cost_price: 6000, selling_price: 9500, sort_order: 1 },
+    { id: 22, project_id: "P-003", category: "設備", item_name: "トイレ交換", unit: "台", quantity: 2, cost_price: 45000, selling_price: 85000, sort_order: 2 },
+    { id: 23, project_id: "P-003", category: "設備", item_name: "洗面台交換", unit: "台", quantity: 1, cost_price: 35000, selling_price: 65000, sort_order: 3 },
+    { id: 24, project_id: "P-003", category: "設備", item_name: "給湯器交換", unit: "台", quantity: 1, cost_price: 85000, selling_price: 150000, sort_order: 4 },
+    { id: 25, project_id: "P-003", category: "塗装", item_name: "室内塗装（壁）", unit: "m2", quantity: 30, cost_price: 1200, selling_price: 2000, sort_order: 5 },
+    { id: 26, project_id: "P-003", category: "電気", item_name: "照明器具交換", unit: "箇所", quantity: 8, cost_price: 5000, selling_price: 9000, sort_order: 6 },
+    { id: 27, project_id: "P-003", category: "クリーニング", item_name: "ハウスクリーニング（2DK）", unit: "式", quantity: 1, cost_price: 35000, selling_price: 55000, sort_order: 7 },
+    { id: 28, project_id: "P-003", category: "諸経費", item_name: "廃棄物処理", unit: "式", quantity: 1, cost_price: 15000, selling_price: 25000, sort_order: 8 },
+    { id: 29, project_id: "P-003", category: "諸経費", item_name: "現場管理費", unit: "式", quantity: 1, cost_price: 0, selling_price: 30000, sort_order: 9 },
 
     // P-004: 受注（3DK原状回復）
-    { id: 30, project_id: "P-004", category: "内装", item_name: "クロス貼替（量産）", unit: "m2", quantity: 75, cost_price: 850, selling_price: 1400 },
-    { id: 31, project_id: "P-004", category: "内装", item_name: "CF貼替", unit: "m2", quantity: 18, cost_price: 2800, selling_price: 4500 },
-    { id: 32, project_id: "P-004", category: "畳・襖", item_name: "畳表替え", unit: "枚", quantity: 12, cost_price: 3900, selling_price: 6500 },
-    { id: 33, project_id: "P-004", category: "畳・襖", item_name: "障子張替え", unit: "枚", quantity: 4, cost_price: 2500, selling_price: 4500 },
-    { id: 34, project_id: "P-004", category: "クリーニング", item_name: "ハウスクリーニング（2DK）", unit: "式", quantity: 1, cost_price: 35000, selling_price: 55000 },
-    { id: 35, project_id: "P-004", category: "諸経費", item_name: "現場管理費", unit: "式", quantity: 1, cost_price: 0, selling_price: 20000 },
+    { id: 30, project_id: "P-004", category: "内装", item_name: "クロス貼替（量産）", unit: "m2", quantity: 75, cost_price: 850, selling_price: 1400, sort_order: 0 },
+    { id: 31, project_id: "P-004", category: "内装", item_name: "CF貼替", unit: "m2", quantity: 18, cost_price: 2800, selling_price: 4500, sort_order: 1 },
+    { id: 32, project_id: "P-004", category: "畳・襖", item_name: "畳表替え", unit: "枚", quantity: 12, cost_price: 3900, selling_price: 6500, sort_order: 2 },
+    { id: 33, project_id: "P-004", category: "畳・襖", item_name: "障子張替え", unit: "枚", quantity: 4, cost_price: 2500, selling_price: 4500, sort_order: 3 },
+    { id: 34, project_id: "P-004", category: "クリーニング", item_name: "ハウスクリーニング（2DK）", unit: "式", quantity: 1, cost_price: 35000, selling_price: 55000, sort_order: 4 },
+    { id: 35, project_id: "P-004", category: "諸経費", item_name: "現場管理費", unit: "式", quantity: 1, cost_price: 0, selling_price: 20000, sort_order: 5 },
 
     // P-005: 見積中（2LDKリフォーム）
-    { id: 40, project_id: "P-005", category: "内装", item_name: "クロス貼替（1000番台）", unit: "m2", quantity: 85, cost_price: 1100, selling_price: 1800 },
-    { id: 41, project_id: "P-005", category: "大工", item_name: "床張替え（フローリング）", unit: "m2", quantity: 40, cost_price: 6000, selling_price: 9500 },
-    { id: 42, project_id: "P-005", category: "設備", item_name: "混合水栓交換", unit: "箇所", quantity: 3, cost_price: 15000, selling_price: 28000 },
-    { id: 43, project_id: "P-005", category: "電気", item_name: "コンセント増設", unit: "箇所", quantity: 2, cost_price: 8000, selling_price: 15000 },
+    { id: 40, project_id: "P-005", category: "内装", item_name: "クロス貼替（1000番台）", unit: "m2", quantity: 85, cost_price: 1100, selling_price: 1800, sort_order: 0 },
+    { id: 41, project_id: "P-005", category: "大工", item_name: "床張替え（フローリング）", unit: "m2", quantity: 40, cost_price: 6000, selling_price: 9500, sort_order: 1 },
+    { id: 42, project_id: "P-005", category: "設備", item_name: "混合水栓交換", unit: "箇所", quantity: 3, cost_price: 15000, selling_price: 28000, sort_order: 2 },
+    { id: 43, project_id: "P-005", category: "電気", item_name: "コンセント増設", unit: "箇所", quantity: 2, cost_price: 8000, selling_price: 15000, sort_order: 3 },
 
     // P-006: 見積中（テナント改修）
-    { id: 50, project_id: "P-006", category: "内装", item_name: "クロス貼替（1000番台）", unit: "m2", quantity: 150, cost_price: 1100, selling_price: 1800 },
-    { id: 51, project_id: "P-006", category: "内装", item_name: "フロアタイル貼り", unit: "m2", quantity: 60, cost_price: 3500, selling_price: 5500 },
-    { id: 52, project_id: "P-006", category: "塗装", item_name: "室内塗装（壁）", unit: "m2", quantity: 50, cost_price: 1200, selling_price: 2000 },
-    { id: 53, project_id: "P-006", category: "電気", item_name: "分電盤交換", unit: "台", quantity: 1, cost_price: 35000, selling_price: 60000 },
-    { id: 54, project_id: "P-006", category: "諸経費", item_name: "現場管理費", unit: "式", quantity: 1, cost_price: 0, selling_price: 35000 },
+    { id: 50, project_id: "P-006", category: "内装", item_name: "クロス貼替（1000番台）", unit: "m2", quantity: 150, cost_price: 1100, selling_price: 1800, sort_order: 0 },
+    { id: 51, project_id: "P-006", category: "内装", item_name: "フロアタイル貼り", unit: "m2", quantity: 60, cost_price: 3500, selling_price: 5500, sort_order: 1 },
+    { id: 52, project_id: "P-006", category: "塗装", item_name: "室内塗装（壁）", unit: "m2", quantity: 50, cost_price: 1200, selling_price: 2000, sort_order: 2 },
+    { id: 53, project_id: "P-006", category: "電気", item_name: "分電盤交換", unit: "台", quantity: 1, cost_price: 35000, selling_price: 60000, sort_order: 3 },
+    { id: 54, project_id: "P-006", category: "諸経費", item_name: "現場管理費", unit: "式", quantity: 1, cost_price: 0, selling_price: 35000, sort_order: 4 },
 
     // P-007: 施工中（1R原状回復）
-    { id: 60, project_id: "P-007", category: "内装", item_name: "クロス貼替（量産）", unit: "m2", quantity: 30, cost_price: 850, selling_price: 1400 },
-    { id: 61, project_id: "P-007", category: "クリーニング", item_name: "ハウスクリーニング（1K）", unit: "式", quantity: 1, cost_price: 22000, selling_price: 35000 },
-    { id: 62, project_id: "P-007", category: "諸経費", item_name: "現場管理費", unit: "式", quantity: 1, cost_price: 0, selling_price: 10000 },
+    { id: 60, project_id: "P-007", category: "内装", item_name: "クロス貼替（量産）", unit: "m2", quantity: 30, cost_price: 850, selling_price: 1400, sort_order: 0 },
+    { id: 61, project_id: "P-007", category: "クリーニング", item_name: "ハウスクリーニング（1K）", unit: "式", quantity: 1, cost_price: 22000, selling_price: 35000, sort_order: 1 },
+    { id: 62, project_id: "P-007", category: "諸経費", item_name: "現場管理費", unit: "式", quantity: 1, cost_price: 0, selling_price: 10000, sort_order: 2 },
 
     // P-008: 受注（外壁塗装）
-    { id: 70, project_id: "P-008", category: "塗装", item_name: "外壁塗装", unit: "m2", quantity: 120, cost_price: 2500, selling_price: 4200 },
-    { id: 71, project_id: "P-008", category: "塗装", item_name: "木部塗装", unit: "m2", quantity: 25, cost_price: 1800, selling_price: 3000 },
-    { id: 72, project_id: "P-008", category: "諸経費", item_name: "養生費", unit: "式", quantity: 1, cost_price: 5000, selling_price: 10000 },
-    { id: 73, project_id: "P-008", category: "諸経費", item_name: "廃棄物処理", unit: "式", quantity: 1, cost_price: 15000, selling_price: 25000 },
+    { id: 70, project_id: "P-008", category: "塗装", item_name: "外壁塗装", unit: "m2", quantity: 120, cost_price: 2500, selling_price: 4200, sort_order: 0 },
+    { id: 71, project_id: "P-008", category: "塗装", item_name: "木部塗装", unit: "m2", quantity: 25, cost_price: 1800, selling_price: 3000, sort_order: 1 },
+    { id: 72, project_id: "P-008", category: "諸経費", item_name: "養生費", unit: "式", quantity: 1, cost_price: 5000, selling_price: 10000, sort_order: 2 },
+    { id: 73, project_id: "P-008", category: "諸経費", item_name: "廃棄物処理", unit: "式", quantity: 1, cost_price: 15000, selling_price: 25000, sort_order: 3 },
   ];
 
   // 請求データ
@@ -666,7 +667,21 @@ function localUpdateProjectStatus(projectId: string, status: string) {
 }
 
 function localGetProjectItems(projectId: string) {
-  return readLocalDb().project_items.filter((x) => x.project_id === projectId);
+  const db = readLocalDb();
+  const projectItems = db.project_items.filter((x) => x.project_id === projectId);
+  // 既存データにsort_orderがない場合、indexベースでデフォルト値を付与して保存
+  let needsWrite = false;
+  projectItems.forEach((item, idx) => {
+    if (item.sort_order == null || item.sort_order === undefined) {
+      (item as ProjectItem).sort_order = idx;
+      needsWrite = true;
+    }
+  });
+  if (needsWrite) {
+    writeLocalDb(db);
+  }
+  // sort_order順にソートして返す
+  return [...projectItems].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 }
 
 function localCreateProjectItem(
@@ -686,6 +701,9 @@ function localCreateProjectItem(
   const db = readLocalDb();
   if (!db.projects.find((x) => x.project_id === projectId)) throw new Error("案件が存在しません");
   const master = payload.master_item_id ? db.work_items.find((x) => x.id === payload.master_item_id) : undefined;
+  // sort_orderの自動付与: 同一project_idの項目の最大sort_order + 1
+  const existingItems = db.project_items.filter((x) => x.project_id === projectId);
+  const maxSortOrder = existingItems.reduce((m, x) => Math.max(m, x.sort_order ?? 0), -1);
   const row: ProjectItem = {
     id: (db.project_items.reduce((m, x) => Math.max(m, x.id), 0) || 0) + 1,
     project_id: projectId,
@@ -697,6 +715,7 @@ function localCreateProjectItem(
     cost_price: safeNum(payload.cost_price ?? master?.cost_price ?? 0),
     selling_price: safeNum(payload.selling_price ?? master?.selling_price ?? 0),
     vendor_id: payload.vendor_id ?? master?.vendor_id ?? null,
+    sort_order: maxSortOrder + 1,
   };
   db.project_items.push(row);
   writeLocalDb(db);
@@ -725,6 +744,18 @@ function localDeleteProjectItem(itemId: number) {
   const idx = db.project_items.findIndex((x) => x.id === itemId);
   if (idx === -1) throw new Error("明細が存在しません");
   db.project_items.splice(idx, 1);
+  writeLocalDb(db);
+}
+
+function localReorderProjectItems(projectId: string, itemIds: number[]) {
+  const db = readLocalDb();
+  // itemIdsの配列順にsort_orderを振り直す
+  for (let i = 0; i < itemIds.length; i++) {
+    const item = db.project_items.find((x) => x.id === itemIds[i] && x.project_id === projectId);
+    if (item) {
+      item.sort_order = i;
+    }
+  }
   writeLocalDb(db);
 }
 
@@ -1161,6 +1192,21 @@ export async function deleteProjectItem(projectId: string, itemId: number) {
   );
 }
 
+/** 明細の並び順を保存（itemIdsの配列順にsort_orderを振り直す） */
+export async function reorderProjectItems(projectId: string, itemIds: number[]) {
+  return withFallback(
+    async () => {
+      const res = await apiFetch(`${API_BASE}/api/v1/projects/${encodeURIComponent(projectId)}/items/reorder`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item_ids: itemIds }),
+      });
+      if (!res.ok) throw new Error("並び替え保存失敗");
+    },
+    () => localReorderProjectItems(projectId, itemIds),
+  );
+}
+
 export async function getInvoices(projectId?: string) {
   return withFallback(
     async () => {
@@ -1551,7 +1597,10 @@ export async function addTemplateToProject(projectId: string, templateId: string
 export function exportEstimateHtml(projectId: string, options?: { staffName?: string }): string {
   const db = readLocalDb();
   const project = db.projects.find((p) => p.project_id === projectId);
-  const items = db.project_items.filter((x) => x.project_id === projectId);
+  // sort_order順にソートしてからグループ化
+  const items = db.project_items
+    .filter((x) => x.project_id === projectId)
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
   const groups = new Map<string, ProjectItem[]>();
   for (const item of items) {
