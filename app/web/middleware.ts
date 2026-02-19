@@ -6,11 +6,8 @@ export async function middleware(request: NextRequest) {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const dataSource = process.env.NEXT_PUBLIC_DATA_SOURCE;
 
-  console.log("[middleware] dataSource=", dataSource, "url=", url?.slice(0, 30), "key=", key?.slice(0, 20));
-
   // Supabase未設定時はスキップ
   if (dataSource !== "supabase" || !url || !key) {
-    console.log("[middleware] skipped: env not ready");
     return NextResponse.next();
   }
 
@@ -41,8 +38,6 @@ export async function middleware(request: NextRequest) {
     const pathname = request.nextUrl.pathname;
     const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname.startsWith("/auth/");
 
-    console.log("[middleware] path=", pathname, "user=", !!user, "isAuthPage=", isAuthPage);
-
     // 未認証 → ログインへ
     if (!user && !isAuthPage) {
       const loginUrl = request.nextUrl.clone();
@@ -58,12 +53,9 @@ export async function middleware(request: NextRequest) {
     }
 
     return supabaseResponse;
-  } catch (e) {
-    console.error("[middleware] error:", e);
-    // エラー時はログインへリダイレクト
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    return NextResponse.redirect(loginUrl);
+  } catch {
+    // Supabaseネットワーク障害時は通過させる（AuthGuardが二重防御）
+    return NextResponse.next({ request });
   }
 }
 

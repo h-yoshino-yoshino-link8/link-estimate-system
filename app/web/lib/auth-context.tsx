@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "./supabase/client";
 import { seedOrganizationData } from "./api/seed";
+import { clearOrgIdCache } from "./api/supabase-ops";
 
 type AuthState = {
   user: User | null;
@@ -94,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     if (!isSupabaseMode) return;
+    clearOrgIdCache();
     const supabase = createClient();
     await supabase.auth.signOut();
     window.location.href = "/login";

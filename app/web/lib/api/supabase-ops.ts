@@ -21,7 +21,16 @@ function ymd(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+// セッション内キャッシュ（同一ページロード内で重複クエリを防止）
+let _cachedOrgId: string | null = null;
+let _cachedUserId: string | null = null;
+let _cacheTimestamp = 0;
+const CACHE_TTL = 60_000; // 60秒
+
 async function getOrgId(): Promise<string> {
+  const now = Date.now();
+  if (_cachedOrgId && now - _cacheTimestamp < CACHE_TTL) return _cachedOrgId;
+
   const sb = supabase();
   const { data: { user } } = await sb.auth.getUser();
   if (!user) throw new Error("認証が必要です");
@@ -31,7 +40,19 @@ async function getOrgId(): Promise<string> {
     .eq("id", user.id)
     .single();
   if (!profile) throw new Error("プロフィールが見つかりません");
+  _cachedOrgId = profile.org_id;
+  _cachedUserId = user.id;
+  _cacheTimestamp = now;
   return profile.org_id;
+}
+
+function getCachedUserId(): string | null { return _cachedUserId; }
+
+// ログアウト時にキャッシュクリア
+export function clearOrgIdCache(): void {
+  _cachedOrgId = null;
+  _cachedUserId = null;
+  _cacheTimestamp = 0;
 }
 
 // ============================================================
@@ -85,7 +106,7 @@ function toProject(row: Record<string, unknown>): Project {
     site_address: row.site_address as string | null,
     owner_name: row.owner_name as string,
     project_status: row.project_status as string,
-    created_at: (row.created_at as string).slice(0, 10),
+    created_at: row.created_at ? (row.created_at as string).slice(0, 10) : ymd(),
     estimated_start: row.estimated_start as string | null,
     estimated_end: row.estimated_end as string | null,
     note: row.note as string | null,
@@ -274,12 +295,12 @@ export async function sbCreateProjectQuick(payload: {
     customerName = newCustomer.customer_name;
   }
 
-  // ユーザー名を取得
-  const { data: { user } } = await sb.auth.getUser();
+  // ユーザー名を取得（getOrgId()で既にキャッシュ済み）
+  const userId = getCachedUserId();
   const { data: profile } = await sb
     .from("profiles")
     .select("display_name")
-    .eq("id", user!.id)
+    .eq("id", userId!)
     .single();
 
   const { data, error } = await sb
@@ -358,7 +379,7 @@ export async function sbCreateProjectItem(
     .eq("project_id", projectId)
     .order("sort_order", { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
   const nextOrder = (maxRow ? safeNum(maxRow.sort_order) : -1) + 1;
 
   const { data, error } = await sb
@@ -405,11 +426,12 @@ export async function sbUpdateProjectItem(
   return toProjectItem(data);
 }
 
-export async function sbDeleteProjectItem(_projectId: string, itemId: number): Promise<void> {
+export async function sbDeleteProjectItem(projectId: string, itemId: number): Promise<void> {
   const { error } = await supabase()
     .from("project_items")
     .delete()
-    .eq("id", itemId);
+    .eq("id", itemId)
+    .eq("project_id", projectId);
   if (error) throw new Error("明細削除失敗");
 }
 
