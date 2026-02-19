@@ -23,10 +23,19 @@ export default function Header() {
         </Link>
         <nav className="top-nav" aria-label="primary">
           <Link href="/" className={pathname === "/" ? "is-active" : ""}>
-            経営ダッシュボード
+            ダッシュボード
           </Link>
           <Link href="/projects" className={pathname.startsWith("/projects") ? "is-active" : ""}>
-            案件管理
+            案件
+          </Link>
+          <Link href="/customers" className={pathname.startsWith("/customers") ? "is-active" : ""}>
+            顧客
+          </Link>
+          <Link href="/vendors" className={pathname.startsWith("/vendors") ? "is-active" : ""}>
+            仕入先
+          </Link>
+          <Link href="/work-items" className={pathname.startsWith("/work-items") ? "is-active" : ""}>
+            単価表
           </Link>
           <Link href="/settings" className={pathname === "/settings" ? "is-active" : ""}>
             設定
@@ -57,14 +66,35 @@ export default function Header() {
             className={pathname === "/" ? "is-active" : ""}
             onClick={() => setMobileMenuOpen(false)}
           >
-            経営ダッシュボード
+            ダッシュボード
           </Link>
           <Link
             href="/projects"
             className={pathname.startsWith("/projects") ? "is-active" : ""}
             onClick={() => setMobileMenuOpen(false)}
           >
-            案件管理
+            案件
+          </Link>
+          <Link
+            href="/customers"
+            className={pathname.startsWith("/customers") ? "is-active" : ""}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            顧客
+          </Link>
+          <Link
+            href="/vendors"
+            className={pathname.startsWith("/vendors") ? "is-active" : ""}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            仕入先
+          </Link>
+          <Link
+            href="/work-items"
+            className={pathname.startsWith("/work-items") ? "is-active" : ""}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            単価表
           </Link>
           <Link
             href="/settings"

@@ -3,7 +3,9 @@
 // ============================================================
 
 import {
-  sbGetCustomers, sbGetVendors, sbGetWorkItems,
+  sbGetCustomers, sbCreateCustomer, sbUpdateCustomer, sbDeleteCustomer,
+  sbGetVendors, sbCreateVendor, sbUpdateVendor, sbDeleteVendor,
+  sbGetWorkItems, sbCreateWorkItem, sbUpdateWorkItem, sbDeleteWorkItem,
   sbGetProjects, sbGetProject, sbCreateProject, sbCreateProjectQuick, sbUpdateProjectStatus,
   sbGetProjectItems, sbCreateProjectItem, sbUpdateProjectItem, sbDeleteProjectItem, sbReorderProjectItems,
   sbGetInvoices, sbCreateInvoice, sbUpdateInvoice,
@@ -215,8 +217,19 @@ export function marginRate(selling: number, cost: number) {
 // ============================================================
 
 export async function getCustomers() { return sbGetCustomers(); }
+export async function createCustomer(payload: { customer_name: string; contact_name?: string; phone?: string; monthly_volume?: string; status?: string }) { return sbCreateCustomer(payload); }
+export async function updateCustomer(customerId: string, payload: Partial<{ customer_name: string; contact_name: string; phone: string; monthly_volume: string; status: string }>) { return sbUpdateCustomer(customerId, payload); }
+export async function deleteCustomer(customerId: string) { return sbDeleteCustomer(customerId); }
+
 export async function getVendors() { return sbGetVendors(); }
+export async function createVendor(payload: { vendor_name: string; vendor_type?: "subcontractor" | "supplier"; specialty?: string; phone?: string; note?: string }) { return sbCreateVendor(payload); }
+export async function updateVendor(vendorId: string, payload: Partial<{ vendor_name: string; vendor_type: "subcontractor" | "supplier"; specialty: string; phone: string; note: string; markup_rate: number | null }>) { return sbUpdateVendor(vendorId, payload); }
+export async function deleteVendor(vendorId: string) { return sbDeleteVendor(vendorId); }
+
 export async function getWorkItems() { return sbGetWorkItems(); }
+export async function createWorkItem(payload: { category: string; item_name: string; specification?: string; unit: string; cost_price: number; selling_price: number; vendor_id?: string }) { return sbCreateWorkItem(payload); }
+export async function updateWorkItem(itemId: number, payload: Partial<{ category: string; item_name: string; specification: string; unit: string; cost_price: number; selling_price: number; vendor_id: string | null }>) { return sbUpdateWorkItem(itemId, payload); }
+export async function deleteWorkItem(itemId: number) { return sbDeleteWorkItem(itemId); }
 
 export async function getProjects(params?: { customer_id?: string; status?: string }) {
   return sbGetProjects(params);

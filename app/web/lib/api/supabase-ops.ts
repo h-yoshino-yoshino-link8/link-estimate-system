@@ -172,6 +172,62 @@ export async function sbGetCustomers(): Promise<Customer[]> {
   return (data ?? []).map(toCustomer);
 }
 
+export async function sbCreateCustomer(payload: {
+  customer_name: string;
+  contact_name?: string;
+  phone?: string;
+  monthly_volume?: string;
+  status?: string;
+}): Promise<Customer> {
+  const orgId = await getOrgId();
+  const { data, error } = await supabase()
+    .from("customers")
+    .insert({
+      org_id: orgId,
+      customer_name: payload.customer_name.trim(),
+      contact_name: payload.contact_name?.trim() || null,
+      phone: payload.phone?.trim() || null,
+      monthly_volume: payload.monthly_volume?.trim() || null,
+      status: payload.status ?? "取引中",
+    })
+    .select()
+    .single();
+  if (error || !data) throw new Error("顧客作成失敗: " + (error?.message ?? ""));
+  return toCustomer(data);
+}
+
+export async function sbUpdateCustomer(customerId: string, payload: Partial<{
+  customer_name: string;
+  contact_name: string;
+  phone: string;
+  monthly_volume: string;
+  status: string;
+}>): Promise<Customer> {
+  const updates: Record<string, unknown> = {};
+  if (payload.customer_name !== undefined) updates.customer_name = payload.customer_name.trim();
+  if (payload.contact_name !== undefined) updates.contact_name = payload.contact_name.trim() || null;
+  if (payload.phone !== undefined) updates.phone = payload.phone.trim() || null;
+  if (payload.monthly_volume !== undefined) updates.monthly_volume = payload.monthly_volume.trim() || null;
+  if (payload.status !== undefined) updates.status = payload.status;
+
+  const { data, error } = await supabase()
+    .from("customers")
+    .update(updates)
+    .eq("id", customerId)
+    .select()
+    .single();
+  if (error || !data) throw new Error("顧客更新失敗: " + (error?.message ?? ""));
+  return toCustomer(data);
+}
+
+export async function sbDeleteCustomer(customerId: string): Promise<void> {
+  const { error } = await supabase()
+    .from("customers")
+    .delete()
+    .eq("id", customerId);
+  if (error) throw new Error("顧客削除失敗: " + error.message);
+}
+
 // ============================================================
 // Vendors
 // ============================================================
@@ -183,6 +239,66 @@ export async function sbGetVendors(): Promise<Vendor[]> {
     .order("vendor_name");
   if (error) throw new Error("仕入先一覧取得失敗: " + error.message);
   return (data ?? []).map(toVendor);
+}
+
+export async function sbCreateVendor(payload: {
+  vendor_name: string;
+  vendor_type?: "subcontractor" | "supplier";
+  specialty?: string;
+  phone?: string;
+  note?: string;
+}): Promise<Vendor> {
+  const orgId = await getOrgId();
+  const { data, error } = await supabase()
+    .from("vendors")
+    .insert({
+      org_id: orgId,
+      vendor_name: payload.vendor_name.trim(),
+      vendor_type: payload.vendor_type ?? "subcontractor",
+      specialty: payload.specialty?.trim() || null,
+      phone: payload.phone?.trim() || null,
+      note: payload.note?.trim() || null,
+      annual_order_amount: 0,
+      markup_rate: null,
+    })
+    .select()
+    .single();
+  if (error || !data) throw new Error("仕入先作成失敗: " + (error?.message ?? ""));
+  return toVendor(data);
+}
+
+export async function sbUpdateVendor(vendorId: string, payload: Partial<{
+  vendor_name: string;
+  vendor_type: "subcontractor" | "supplier";
+  specialty: string;
+  phone: string;
+  note: string;
+  markup_rate: number | null;
+}>): Promise<Vendor> {
+  const updates: Record<string, unknown> = {};
+  if (payload.vendor_name !== undefined) updates.vendor_name = payload.vendor_name.trim();
+  if (payload.vendor_type !== undefined) updates.vendor_type = payload.vendor_type;
+  if (payload.specialty !== undefined) updates.specialty = payload.specialty.trim() || null;
+  if (payload.phone !== undefined) updates.phone = payload.phone.trim() || null;
+  if (payload.note !== undefined) updates.note = payload.note.trim() || null;
+  if (payload.markup_rate !== undefined) updates.markup_rate = payload.markup_rate;
+
+  const { data, error } = await supabase()
+    .from("vendors")
+    .update(updates)
+    .eq("id", vendorId)
+    .select()
+    .single();
+  if (error || !data) throw new Error("仕入先更新失敗: " + (error?.message ?? ""));
+  return toVendor(data);
+}
+
+export async function sbDeleteVendor(vendorId: string): Promise<void> {
+  const { error } = await supabase()
+    .from("vendors")
+    .delete()
+    .eq("id", vendorId);
+  if (error) throw new Error("仕入先削除失敗: " + error.message);
 }
 
 // ============================================================
@@ -197,6 +313,82 @@ export async function sbGetWorkItems(): Promise<WorkItemMaster[]> {
     .order("category");
   if (error) throw new Error("工事項目取得失敗: " + error.message);
   return (data ?? []).map(toWorkItem);
+}
+
+export async function sbCreateWorkItem(payload: {
+  category: string;
+  item_name: string;
+  specification?: string;
+  unit: string;
+  cost_price: number;
+  selling_price: number;
+  vendor_id?: string;
+}): Promise<WorkItemMaster> {
+  const orgId = await getOrgId();
+  const sb = supabase();
+
+  // 最大sort_order取得
+  const { data: maxRow } = await sb
+    .from("work_items")
+    .select("sort_order")
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const nextOrder = (maxRow ? safeNum(maxRow.sort_order) : -1) + 1;
+
+  const { data, error } = await sb
+    .from("work_items")
+    .insert({
+      org_id: orgId,
+      category: payload.category.trim(),
+      item_name: payload.item_name.trim(),
+      specification: payload.specification?.trim() || null,
+      unit: payload.unit.trim(),
+      cost_price: safeNum(payload.cost_price),
+      selling_price: safeNum(payload.selling_price),
+      vendor_id: payload.vendor_id || null,
+      sort_order: nextOrder,
+    })
+    .select()
+    .single();
+  if (error || !data) throw new Error("工事項目作成失敗: " + (error?.message ?? ""));
+  return toWorkItem(data);
+}
+
+export async function sbUpdateWorkItem(itemId: number, payload: Partial<{
+  category: string;
+  item_name: string;
+  specification: string;
+  unit: string;
+  cost_price: number;
+  selling_price: number;
+  vendor_id: string | null;
+}>): Promise<WorkItemMaster> {
+  const updates: Record<string, unknown> = {};
+  if (payload.category !== undefined) updates.category = payload.category.trim();
+  if (payload.item_name !== undefined) updates.item_name = payload.item_name.trim();
+  if (payload.specification !== undefined) updates.specification = payload.specification.trim() || null;
+  if (payload.unit !== undefined) updates.unit = payload.unit.trim();
+  if (payload.cost_price !== undefined) updates.cost_price = safeNum(payload.cost_price);
+  if (payload.selling_price !== undefined) updates.selling_price = safeNum(payload.selling_price);
+  if (payload.vendor_id !== undefined) updates.vendor_id = payload.vendor_id || null;
+
+  const { data, error } = await supabase()
+    .from("work_items")
+    .update(updates)
+    .eq("id", itemId)
+    .select()
+    .single();
+  if (error || !data) throw new Error("工事項目更新失敗: " + (error?.message ?? ""));
+  return toWorkItem(data);
+}
+
+export async function sbDeleteWorkItem(itemId: number): Promise<void> {
+  const { error } = await supabase()
+    .from("work_items")
+    .delete()
+    .eq("id", itemId);
+  if (error) throw new Error("工事項目削除失敗: " + error.message);
 }
 
 // ============================================================
