@@ -784,6 +784,42 @@ export type OrgInfo = {
   bank_info: string;
 };
 
+export type OrgSettings = {
+  name: string;
+  postal_code: string;
+  address: string;
+  phone: string;
+  fax: string;
+  email: string;
+  invoice_number: string;
+  bank_info: string;
+  logo_url: string;
+  notes: string;
+};
+
+export async function sbGetOrgSettings(): Promise<OrgSettings> {
+  const orgId = await getOrgId();
+  const { data, error } = await supabase()
+    .from("organizations")
+    .select("name, postal_code, address, phone, fax, email, invoice_number, bank_info, logo_url, notes")
+    .eq("id", orgId)
+    .single();
+  if (error || !data) return { name: "", postal_code: "", address: "", phone: "", fax: "", email: "", invoice_number: "", bank_info: "", logo_url: "", notes: "" };
+  return data as OrgSettings;
+}
+
+export async function sbUpdateOrgSettings(settings: Partial<OrgSettings>): Promise<OrgSettings> {
+  const orgId = await getOrgId();
+  const { data, error } = await supabase()
+    .from("organizations")
+    .update(settings)
+    .eq("id", orgId)
+    .select("name, postal_code, address, phone, fax, email, invoice_number, bank_info, logo_url, notes")
+    .single();
+  if (error || !data) throw new Error("会社情報の更新に失敗しました: " + (error?.message ?? ""));
+  return data as OrgSettings;
+}
+
 export async function sbGetOrgInfo(): Promise<OrgInfo> {
   const orgId = await getOrgId();
   const { data, error } = await supabase()

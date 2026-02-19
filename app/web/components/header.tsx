@@ -28,6 +28,9 @@ export default function Header() {
           <Link href="/projects" className={pathname.startsWith("/projects") ? "is-active" : ""}>
             案件管理
           </Link>
+          <Link href="/settings" className={pathname === "/settings" ? "is-active" : ""}>
+            設定
+          </Link>
         </nav>
         <div className="topbar-actions">
           {isSupabaseMode && displayName && (
@@ -62,6 +65,13 @@ export default function Header() {
             onClick={() => setMobileMenuOpen(false)}
           >
             案件管理
+          </Link>
+          <Link
+            href="/settings"
+            className={pathname === "/settings" ? "is-active" : ""}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            設定
           </Link>
           {isSupabaseMode && (
             <button

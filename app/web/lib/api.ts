@@ -9,8 +9,9 @@ import {
   sbGetInvoices, sbCreateInvoice, sbUpdateInvoice,
   sbGetPayments, sbCreatePayment, sbUpdatePayment,
   sbGetDashboardOverview, sbGetOrgInfo,
+  sbGetOrgSettings, sbUpdateOrgSettings,
 } from "./api/supabase-ops";
-export type { OrgInfo } from "./api/supabase-ops";
+export type { OrgInfo, OrgSettings } from "./api/supabase-ops";
 
 // ============================================================
 // Types (re-exported for backward compatibility)
@@ -320,6 +321,8 @@ export async function getDashboardOverview() {
 }
 
 export { sbGetOrgInfo as getOrgInfo };
+export { sbGetOrgSettings as getOrgSettings };
+export { sbUpdateOrgSettings as updateOrgSettings };
 
 // ============================================================
 // Blob helper
