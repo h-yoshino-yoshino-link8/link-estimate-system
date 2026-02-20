@@ -152,16 +152,6 @@ export type EstimateTemplate = {
   items: EstimateTemplateItem[];
 };
 
-export type DashboardSummary = {
-  project_total: number;
-  project_status_counts: Record<string, number>;
-  invoice_total_amount: number;
-  invoice_remaining_amount: number;
-  payment_total_amount: number;
-  payment_remaining_amount: number;
-  item_total_amount: number;
-};
-
 export type CustomerRankingItem = {
   customer_id: string;
   customer_name: string;

@@ -45,7 +45,7 @@ export default function SignupPage() {
       <main className="auth-page">
         <div className="auth-card">
           <h1>メールを確認してください</h1>
-          <p style={{ textAlign: "center", color: "var(--text-secondary)" }}>
+          <p style={{ textAlign: "center", color: "var(--c-text-3)" }}>
             {email} に確認メールを送信しました。<br />
             メール内のリンクをクリックして登録を完了してください。
           </p>

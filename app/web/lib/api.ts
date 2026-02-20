@@ -178,16 +178,6 @@ export type EstimateTemplate = {
   items: EstimateTemplateItem[];
 };
 
-export type DashboardSummary = {
-  project_total: number;
-  project_status_counts: Record<string, number>;
-  invoice_total_amount: number;
-  invoice_remaining_amount: number;
-  payment_total_amount: number;
-  payment_remaining_amount: number;
-  item_total_amount: number;
-};
-
 export type { CustomerRankingItem, YoYMonthlyPoint, StaffPerformance, StaffMonthlyTarget, StaffTargetVsActual, StaffMember, AgingBucket, UnpaidInvoice, CollectionMetrics } from "./api/types";
 
 // Project A: 検索・集計・エクスポート
@@ -200,6 +190,8 @@ export type { TableStat, UserProfile, EmailLog } from "./api/types";
 // Utilities
 // ============================================================
 
+// NOTE: supabase-ops.ts, projects/[projectId]/page.tsx にも同一定義あり。
+// 循環依存を避けるため各ファイルにローカル定義している。
 function safeNum(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
@@ -398,6 +390,8 @@ export function downloadBlob(blob: Blob, fallbackName: string) {
 
 // ============================================================
 // Estimate Templates
+// TODO: DBの estimate_templates テーブル（seed.tsで投入）と二重管理になっている。
+//       将来的にはDB側に統一し、このハードコード定義を削除する。
 // ============================================================
 
 const ESTIMATE_TEMPLATES: EstimateTemplate[] = [
@@ -597,6 +591,11 @@ export async function addTemplateToProject(projectId: string, templateId: string
 // ============================================================
 
 export async function exportEstimateHtml(projectId: string, options?: { staffName?: string }): Promise<string> {
+  function escHtml(s: string | null | undefined): string {
+    if (!s) return "";
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  }
+
   const project = await getProject(projectId);
   const items = await getProjectItems(projectId);
 
@@ -605,12 +604,10 @@ export async function exportEstimateHtml(projectId: string, options?: { staffNam
   let companyAddress = "";
   let companyPhone = "";
   let companyInvoiceNumber = "";
-  let companyLogoText = "&infin; Estimate OS";
 
   const orgInfo = await sbGetOrgInfo();
   if (orgInfo.name) {
     companyName = orgInfo.name;
-    companyLogoText = `&infin; ${orgInfo.name}`;
   }
   if (orgInfo.address) companyAddress = orgInfo.address;
   if (orgInfo.phone) companyPhone = orgInfo.phone;
@@ -636,7 +633,7 @@ export async function exportEstimateHtml(projectId: string, options?: { staffNam
     const catTotal = catItems.reduce((s, x) => s + safeNum(x.selling_price) * safeNum(x.quantity), 0);
     summaryRows += `<tr>
       <td style="text-align:center;padding:10px 6px">${summaryNo++}</td>
-      <td style="padding:10px 6px;font-weight:500">${cat}</td>
+      <td style="padding:10px 6px;font-weight:500">${escHtml(cat)}</td>
       <td style="text-align:right;padding:10px 6px;font-weight:600">${yenFmt(catTotal)}</td>
     </tr>`;
   }
@@ -647,22 +644,22 @@ export async function exportEstimateHtml(projectId: string, options?: { staffNam
   for (const [cat, catItems] of groups.entries()) {
     const catTotal = catItems.reduce((s, x) => s + safeNum(x.selling_price) * safeNum(x.quantity), 0);
     detailRows += `<tr class="cat-header">
-      <td colspan="7" style="background:#e8edf5;font-weight:700;color:#1e3a5f;padding:6px 8px;font-size:12px;border-bottom:2px solid #1e3a5f">${cat}</td>
+      <td colspan="7" style="background:#e8edf5;font-weight:700;color:#1e3a5f;padding:6px 8px;font-size:12px;border-bottom:2px solid #1e3a5f">${escHtml(cat)}</td>
     </tr>`;
     for (const item of catItems) {
       const lineTotal = safeNum(item.selling_price) * safeNum(item.quantity);
       detailRows += `<tr>
         <td style="text-align:center">${rowNum++}</td>
-        <td>${item.item_name}</td>
-        <td style="font-size:10px;color:#666">${item.specification || ""}</td>
+        <td>${escHtml(item.item_name)}</td>
+        <td style="font-size:10px;color:#666">${escHtml(item.specification)}</td>
         <td style="text-align:right">${item.quantity}</td>
-        <td style="text-align:center">${item.unit}</td>
+        <td style="text-align:center">${escHtml(item.unit)}</td>
         <td style="text-align:right">${yenFmt(item.selling_price)}</td>
         <td style="text-align:right;font-weight:600">${yenFmt(lineTotal)}</td>
       </tr>`;
     }
     detailRows += `<tr class="cat-subtotal">
-      <td colspan="6" style="text-align:right;padding-right:12px;font-weight:600;background:#f8fafc;border-top:1px solid #94a3b8">${cat} 小計</td>
+      <td colspan="6" style="text-align:right;padding-right:12px;font-weight:600;background:#f8fafc;border-top:1px solid #94a3b8">${escHtml(cat)} 小計</td>
       <td style="text-align:right;font-weight:700;background:#f8fafc;border-top:1px solid #cbd5e1">${yenFmt(catTotal)}</td>
     </tr>`;
   }
@@ -673,7 +670,7 @@ export async function exportEstimateHtml(projectId: string, options?: { staffNam
 
   return `<!DOCTYPE html><html lang="ja">
 <head><meta charset="utf-8">
-<title>御見積書 - ${project?.project_name ?? projectId}</title>
+<title>御見積書 - ${escHtml(project?.project_name) || projectId}</title>
 <style>
   @page { size: A4 landscape; margin: 15mm 20mm; }
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -754,7 +751,7 @@ export async function exportEstimateHtml(projectId: string, options?: { staffNam
   </div>
 
   <div class="cover-to">
-    <span class="cover-customer-name">${project?.customer_name ?? ""}</span>
+    <span class="cover-customer-name">${escHtml(project?.customer_name)}</span>
     <span class="cover-customer-suffix">御中</span>
   </div>
 
@@ -769,8 +766,8 @@ export async function exportEstimateHtml(projectId: string, options?: { staffNam
   <div class="cover-body">
     <div class="cover-left">
       <table class="cover-detail-table">
-        <tr><th>件名</th><td>${project?.project_name ?? ""}</td></tr>
-        ${project?.site_address ? `<tr><th>現場住所</th><td>${project.site_address}</td></tr>` : ""}
+        <tr><th>件名</th><td>${escHtml(project?.project_name)}</td></tr>
+        ${project?.site_address ? `<tr><th>現場住所</th><td>${escHtml(project.site_address)}</td></tr>` : ""}
         <tr><th>工事期間</th><td>別途ご相談</td></tr>
         <tr><th>有効期限</th><td>発行日より30日間</td></tr>
         <tr><th>お支払条件</th><td>完工後30日以内</td></tr>
@@ -779,11 +776,11 @@ export async function exportEstimateHtml(projectId: string, options?: { staffNam
 
     <div class="cover-right">
       <div class="cover-company">
-        <div class="cover-company-logo">${companyLogoText}</div>
-        <div class="cover-company-name">${companyName}</div>
-        ${companyAddress ? `${companyAddress}<br>` : ""}
-        ${companyPhone ? `TEL: ${companyPhone}<br>` : ""}
-        ${companyInvoiceNumber ? `登録番号: ${companyInvoiceNumber}` : ""}
+        <div class="cover-company-logo">&infin; ${escHtml(companyName)}</div>
+        <div class="cover-company-name">${escHtml(companyName)}</div>
+        ${companyAddress ? `${escHtml(companyAddress)}<br>` : ""}
+        ${companyPhone ? `TEL: ${escHtml(companyPhone)}<br>` : ""}
+        ${companyInvoiceNumber ? `登録番号: ${escHtml(companyInvoiceNumber)}` : ""}
       </div>
     </div>
   </div>
@@ -844,7 +841,7 @@ export async function exportEstimateHtml(projectId: string, options?: { staffNam
   </table>
 
   <div class="detail-note">
-    ※ 上記金額は全て税抜価格です。別途消費税がかかります。<br>
+    ※ 上記単価は税抜価格です。表紙の合計金額には消費税10%が含まれています。<br>
     ※ 見積有効期限: 発行日より30日間<br>
     ※ 工事範囲・仕様の変更がある場合は別途お見積りいたします。
   </div>

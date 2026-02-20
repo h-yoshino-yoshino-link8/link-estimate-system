@@ -51,6 +51,11 @@ export async function sbGetUserProfiles(): Promise<UserProfile[]> {
   return (data ?? []) as UserProfile[];
 }
 
+// NOTE: profiles テーブルの RLS UPDATE ポリシーが id = auth.uid() のため、
+// 管理者が他ユーザーのロールを変更するには、以下のいずれかの対応が必要:
+// 1. RLSポリシーに admin 例外を追加: OR (SELECT role FROM profiles WHERE id = auth.uid()) = 'admin'
+// 2. この関数を Server Action 化して service_role key を使用
+// 現状は自分自身のロール変更のみ動作する。
 export async function sbUpdateUserRole(userId: string, role: string): Promise<UserProfile> {
   const { data, error } = await supabase()
     .from("profiles")

@@ -117,7 +117,7 @@ export default function ReportView() {
           <p className="kpi-value">{yen(totalPayments)}</p>
         </div>
         <div className="kpi-card">
-          <p className="kpi-label">粗利</p>
+          <p className="kpi-label">粗利（売上 − 外注費）</p>
           <p className={`kpi-value ${grossProfit >= 0 ? "is-positive" : "is-negative"}`}>
             {yen(grossProfit)}
           </p>

@@ -7,7 +7,8 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   // Vercel Cron認証
   const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -46,14 +47,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, sent: 0, message: "No upcoming invoices" });
   }
 
-  // project_idsを収集してprojects + customersを取得
+  // project_idsを収集してprojects + customersを取得（org_id含む）
   const projectIds = [...new Set(invoices.map((i: { project_id: string }) => i.project_id))];
   const { data: projects } = await supabase
     .from("projects")
-    .select("id, project_name, customer_name, customer_id")
+    .select("id, project_name, customer_name, customer_id, org_id")
     .in("id", projectIds);
 
-  const projectMap = new Map((projects ?? []).map((p: { id: string; project_name: string; customer_name: string; customer_id?: string }) => [p.id, p]));
+  const projectMap = new Map((projects ?? []).map((p: { id: string; project_name: string; customer_name: string; customer_id?: string; org_id?: string }) => [p.id, p]));
 
   // customer emailを取得
   const customerIds = [...new Set((projects ?? []).map((p: { customer_id?: string }) => p.customer_id).filter(Boolean))];
@@ -70,13 +71,11 @@ export async function GET(request: Request) {
     );
   }
 
-  // 送信元会社名を取得
+  // 全組織情報を取得し、org_idごとにマッピング
   const { data: orgs } = await supabase
     .from("organizations")
-    .select("id, name")
-    .limit(1);
-  const orgId = orgs?.[0]?.id as string | undefined;
-  const companyName = orgs?.[0]?.name || "株式会社LinK";
+    .select("id, name");
+  const orgMap = new Map((orgs ?? []).map((o: { id: string; name: string }) => [o.id, o]));
 
   let sent = 0;
   const errors: string[] = [];
@@ -86,6 +85,11 @@ export async function GET(request: Request) {
     if (!proj?.customer_id) continue;
     const email = customerEmailMap.get(proj.customer_id);
     if (!email) continue;
+
+    // プロジェクトのorg_idに対応する組織名を使用
+    const org = proj.org_id ? orgMap.get(proj.org_id) : undefined;
+    const companyName = org?.name || "株式会社LinK";
+    const orgId = proj.org_id;
 
     try {
       await resend.emails.send({

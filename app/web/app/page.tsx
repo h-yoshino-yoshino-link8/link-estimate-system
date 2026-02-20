@@ -130,11 +130,6 @@ export default function DashboardPage() {
     return Math.max(...data.monthly_sales.map((x) => x.amount), 1);
   }, [data]);
 
-  const overdueInvoices = useMemo(() => {
-    // This is computed from active projects with 請求済 status
-    return data?.active_projects.filter((p) => p.project_status === "請求済") ?? [];
-  }, [data]);
-
   if (loading && !data) {
     return <main className="page"><p style={{ textAlign: "center", padding: 40, color: "var(--c-text-4)" }}>読み込み中...</p></main>;
   }
@@ -337,7 +332,6 @@ export default function DashboardPage() {
       ) : activeTab === "targets" ? (
         <TargetTracking data={targetData || []} onEditTargets={() => setShowTargetModal(true)} />
       ) : activeTab === "payments" ? (
-        tabLoading ? <p>読み込み中...</p> :
         collectionMetrics && unpaidInvoices ? (
           <PaymentOverview metrics={collectionMetrics} invoices={unpaidInvoices} />
         ) : null

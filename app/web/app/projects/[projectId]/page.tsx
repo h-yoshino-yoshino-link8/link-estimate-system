@@ -73,13 +73,22 @@ export default function ProjectCockpitPage() {
   const [staffList, setStaffList] = useState<StaffMember[]>([]);
 
   // PDF export staff name
-  const [staffName, setStaffName] = useState("吉野 博");
+  const [staffName, setStaffName] = useState("");
 
   // Drag & Drop state
   const [dragItemId, setDragItemId] = useState<number | null>(null);
   const [dragOverItemId, setDragOverItemId] = useState<number | null>(null);
   const [dragOverPos, setDragOverPos] = useState<"above" | "below" | null>(null);
   const dragCounterRef = useRef(0);
+
+  // Amount input modal
+  const [amountModal, setAmountModal] = useState<{
+    type: "invoice" | "payment";
+    id: string;
+    defaultAmount: number;
+    label: string;
+  } | null>(null);
+  const [modalAmount, setModalAmount] = useState("");
 
   // Invoice form
   const [invAmount, setInvAmount] = useState("");
@@ -295,16 +304,9 @@ export default function ProjectCockpitPage() {
     }
   };
 
-  const handleInvoicePayment = async (invoiceId: string, amount: number) => {
-    const input = prompt("入金額を入力", String(amount));
-    if (input === null) return;
-    try {
-      await updateInvoice(invoiceId, { paid_amount: safeNum(input) });
-      await load();
-      setMessage("入金を記録しました");
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "入金記録失敗");
-    }
+  const handleInvoicePayment = (invoiceId: string, amount: number) => {
+    setAmountModal({ type: "invoice", id: invoiceId, defaultAmount: amount, label: "入金額" });
+    setModalAmount(String(amount));
   };
 
   const handleCreatePayment = async () => {
@@ -330,15 +332,28 @@ export default function ProjectCockpitPage() {
     }
   };
 
-  const handlePaymentRecord = async (paymentId: string, ordered: number) => {
-    const input = prompt("支払額を入力", String(ordered));
-    if (input === null) return;
+  const handlePaymentRecord = (paymentId: string, ordered: number) => {
+    setAmountModal({ type: "payment", id: paymentId, defaultAmount: ordered, label: "支払額" });
+    setModalAmount(String(ordered));
+  };
+
+  const handleAmountConfirm = async () => {
+    if (!amountModal) return;
+    const amount = safeNum(modalAmount);
+    if (amount <= 0) { setMessage("金額は1円以上で入力してください"); return; }
     try {
-      await updatePayment(paymentId, { paid_amount: safeNum(input) });
+      if (amountModal.type === "invoice") {
+        await updateInvoice(amountModal.id, { paid_amount: amount });
+        setMessage("入金を記録しました");
+      } else {
+        await updatePayment(amountModal.id, { paid_amount: amount });
+        setMessage("支払を記録しました");
+      }
+      setAmountModal(null);
+      setModalAmount("");
       await load();
-      setMessage("支払を記録しました");
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "支払記録失敗");
+      setMessage(e instanceof Error ? e.message : "記録失敗");
     }
   };
 
@@ -898,7 +913,7 @@ export default function ProjectCockpitPage() {
                       </td>
                       <td>
                         {inv.remaining_amount > 0 && (
-                          <button className="btn btn-sm btn-success" onClick={() => void handleInvoicePayment(inv.invoice_id, inv.invoice_amount)}>
+                          <button className="btn btn-sm btn-success" onClick={() => handleInvoicePayment(inv.invoice_id, inv.invoice_amount)}>
                             入金記録
                           </button>
                         )}
@@ -978,7 +993,7 @@ export default function ProjectCockpitPage() {
                       </td>
                       <td>
                         {pay.remaining_amount > 0 && (
-                          <button className="btn btn-sm btn-success" onClick={() => void handlePaymentRecord(pay.payment_id, pay.ordered_amount)}>
+                          <button className="btn btn-sm btn-success" onClick={() => handlePaymentRecord(pay.payment_id, pay.ordered_amount)}>
                             支払記録
                           </button>
                         )}
@@ -1005,6 +1020,27 @@ export default function ProjectCockpitPage() {
         <p className={`message ${message.includes("失敗") || message.includes("必須") ? "message-error" : "message-success"}`}>
           {message}
         </p>
+      )}
+
+      {amountModal && (
+        <div className="modal-overlay" onClick={() => setAmountModal(null)}>
+          <div className="modal-body" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 360 }}>
+            <h3 style={{ margin: "0 0 var(--sp-3)" }}>{amountModal.label}を入力</h3>
+            <input
+              type="number"
+              value={modalAmount}
+              onChange={(e) => setModalAmount(e.target.value)}
+              min="1"
+              autoFocus
+              style={{ width: "100%", marginBottom: "var(--sp-3)" }}
+              onKeyDown={(e) => { if (e.key === "Enter") void handleAmountConfirm(); if (e.key === "Escape") setAmountModal(null); }}
+            />
+            <div style={{ display: "flex", gap: "var(--sp-2)", justifyContent: "flex-end" }}>
+              <button className="btn" onClick={() => setAmountModal(null)}>キャンセル</button>
+              <button className="btn btn-primary" onClick={() => void handleAmountConfirm()}>確定</button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

@@ -18,11 +18,6 @@ function pct(v: number) {
   return `${n.toFixed(1)}%`;
 }
 
-function trendIcon(rate: number) {
-  if (rate > 0) return <span className="trend-up" style={{ color: "var(--c-success)", fontWeight: 600 }}>&#8593;</span>;
-  if (rate < 0) return <span className="trend-down" style={{ color: "var(--c-error)", fontWeight: 600 }}>&#8595;</span>;
-  return <span className="trend-flat" style={{ color: "var(--c-text-4)", fontWeight: 600 }}>&rarr;</span>;
-}
 
 export default function CustomerRanking({ data }: { data: CustomerRankingItem[] }) {
   const [sortKey, setSortKey] = useState<SortKey>("total_sales");
@@ -99,7 +94,6 @@ export default function CustomerRanking({ data }: { data: CustomerRankingItem[] 
               <th className="text-right">売上高</th>
               <th className="text-right">利益</th>
               <th className="text-right">利益率</th>
-              <th>トレンド</th>
             </tr>
           </thead>
           <tbody>
@@ -118,7 +112,6 @@ export default function CustomerRanking({ data }: { data: CustomerRankingItem[] 
                     {pct(c.margin_rate)}
                   </span>
                 </td>
-                <td>{trendIcon(c.total_profit)}</td>
               </tr>
             ))}
           </tbody>
