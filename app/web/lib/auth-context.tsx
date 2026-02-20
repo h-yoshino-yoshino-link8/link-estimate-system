@@ -72,8 +72,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (currentUser) {
         fetchProfile(currentUser.id).finally(() => setLoading(false));
       } else {
+        // 開発バイパス: DEV_ORG_ID設定時はAuth不要でロード完了
+        const devOrgId = process.env.NEXT_PUBLIC_DEV_ORG_ID;
+        if (devOrgId) {
+          setOrgId(devOrgId);
+          setOrgName("テスト建設株式会社");
+          setDisplayName("開発ユーザー");
+        }
         setLoading(false);
       }
+    }).catch(() => {
+      // Auth障害時のフォールバック
+      const devOrgId = process.env.NEXT_PUBLIC_DEV_ORG_ID;
+      if (devOrgId) {
+        setOrgId(devOrgId);
+        setOrgName("テスト建設株式会社");
+        setDisplayName("開発ユーザー");
+      }
+      setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(

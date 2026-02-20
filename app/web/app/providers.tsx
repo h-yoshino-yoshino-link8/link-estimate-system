@@ -6,17 +6,18 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading, isSupabaseMode } = useAuth();
+  const { user, orgId, loading, isSupabaseMode } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname.startsWith("/auth/");
+  const hasDevBypass = !!process.env.NEXT_PUBLIC_DEV_ORG_ID;
 
   useEffect(() => {
-    if (!isSupabaseMode || loading) return;
+    if (!isSupabaseMode || loading || hasDevBypass) return;
     if (!user && !isAuthPage) {
       router.replace("/login");
     }
-  }, [user, loading, isSupabaseMode, isAuthPage, router]);
+  }, [user, loading, isSupabaseMode, isAuthPage, router, hasDevBypass]);
 
   if (isSupabaseMode && loading) {
     return (
@@ -28,7 +29,8 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isSupabaseMode && !user && !isAuthPage) {
+  // 開発バイパス: orgIdがあればAuth無しでも通過
+  if (isSupabaseMode && !user && !isAuthPage && !hasDevBypass) {
     return null;
   }
 

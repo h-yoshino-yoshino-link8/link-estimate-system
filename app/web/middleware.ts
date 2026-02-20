@@ -11,6 +11,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // 開発バイパス: DEV_ORG_ID設定時はAuth不要
+  if (process.env.NEXT_PUBLIC_DEV_ORG_ID) {
+    return NextResponse.next();
+  }
+
   try {
     let supabaseResponse = NextResponse.next({ request });
 
