@@ -8,6 +8,8 @@ import type {
   Customer, Vendor, WorkItemMaster, Project, ProjectItem,
   Invoice, Payment, ProjectListResponse, DashboardOverview,
   DashboardMonthlySalesPoint, DashboardActiveProject,
+  CustomerRankingItem, YoYMonthlyPoint, StaffPerformance,
+  StaffMonthlyTarget, StaffTargetVsActual, StaffMember,
 } from "./types";
 
 function supabase() { return createClient(); }
@@ -28,6 +30,13 @@ let _cacheTimestamp = 0;
 const CACHE_TTL = 60_000; // 60秒
 
 async function getOrgId(): Promise<string> {
+  // 開発バイパス: RLS無効時にAuth不要でテスト可能にする
+  const devOrgId = process.env.NEXT_PUBLIC_DEV_ORG_ID;
+  if (devOrgId) {
+    _cachedOrgId = devOrgId;
+    return devOrgId;
+  }
+
   const now = Date.now();
   if (_cachedOrgId && now - _cacheTimestamp < CACHE_TTL) return _cachedOrgId;
 
@@ -110,6 +119,7 @@ function toProject(row: Record<string, unknown>): Project {
     estimated_start: row.estimated_start as string | null,
     estimated_end: row.estimated_end as string | null,
     note: row.note as string | null,
+    assigned_staff_id: row.assigned_staff_id as string | null,
   };
 }
 
@@ -1021,4 +1031,413 @@ export async function sbGetOrgInfo(): Promise<OrgInfo> {
     .single();
   if (error || !data) return { name: "", address: "", phone: "", invoice_number: "", bank_info: "" };
   return data as OrgInfo;
+}
+
+// ============================================================
+// Staff Members
+// ============================================================
+
+export async function sbGetStaffMembers(): Promise<StaffMember[]> {
+  const orgId = await getOrgId();
+  const { data, error } = await supabase()
+    .from("profiles")
+    .select("id, display_name, role")
+    .eq("org_id", orgId)
+    .order("display_name");
+  if (error) throw new Error("スタッフ一覧取得失敗: " + error.message);
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    display_name: (row.display_name as string) || "未設定",
+    role: (row.role as string) || "",
+  }));
+}
+
+// ============================================================
+// Customer Ranking
+// ============================================================
+
+export async function sbGetCustomerRanking(period?: { from?: string; to?: string }): Promise<CustomerRankingItem[]> {
+  const sb = supabase();
+
+  const [{ data: projects }, { data: projectItems }, { data: invoices }] = await Promise.all([
+    sb.from("projects").select("id, customer_id, customer_name"),
+    sb.from("project_items").select("project_id, quantity, cost_price, selling_price"),
+    sb.from("invoices").select("project_id, invoice_amount, billed_at"),
+  ]);
+
+  const allProjects = (projects ?? []) as Record<string, unknown>[];
+  const allItems = (projectItems ?? []) as Record<string, unknown>[];
+  const allInvoices = (invoices ?? []) as Record<string, unknown>[];
+
+  // 期間内の請求から対象プロジェクトを判定
+  const projectInvoiceMap = new Map<string, number>();
+  for (const inv of allInvoices) {
+    const billedAt = inv.billed_at as string;
+    if (period?.from && billedAt < period.from) continue;
+    if (period?.to && billedAt > period.to) continue;
+    const pid = inv.project_id as string;
+    projectInvoiceMap.set(pid, (projectInvoiceMap.get(pid) ?? 0) + safeNum(inv.invoice_amount));
+  }
+
+  // プロジェクトごとの原価
+  const projectCostMap = new Map<string, number>();
+  const projectSellingMap = new Map<string, number>();
+  for (const item of allItems) {
+    const pid = item.project_id as string;
+    const qty = safeNum(item.quantity);
+    projectCostMap.set(pid, (projectCostMap.get(pid) ?? 0) + safeNum(item.cost_price) * qty);
+    projectSellingMap.set(pid, (projectSellingMap.get(pid) ?? 0) + safeNum(item.selling_price) * qty);
+  }
+
+  // 顧客ごとに集計
+  const customerMap = new Map<string, { customer_name: string; total_sales: number; total_cost: number; project_count: number }>();
+  for (const p of allProjects) {
+    const pid = p.id as string;
+    const sales = projectInvoiceMap.get(pid);
+    if (sales === undefined) continue; // 期間外
+    const custId = p.customer_id as string;
+    const existing = customerMap.get(custId) ?? {
+      customer_name: p.customer_name as string,
+      total_sales: 0,
+      total_cost: 0,
+      project_count: 0,
+    };
+    existing.total_sales += sales;
+    existing.total_cost += projectCostMap.get(pid) ?? 0;
+    existing.project_count += 1;
+    customerMap.set(custId, existing);
+  }
+
+  return Array.from(customerMap.entries())
+    .map(([customer_id, v]) => {
+      const profit = v.total_sales - v.total_cost;
+      return {
+        customer_id,
+        customer_name: v.customer_name,
+        total_sales: v.total_sales,
+        total_cost: v.total_cost,
+        total_profit: profit,
+        project_count: v.project_count,
+        margin_rate: v.total_sales > 0 ? (profit / v.total_sales) * 100 : 0,
+      };
+    })
+    .sort((a, b) => b.total_sales - a.total_sales);
+}
+
+// ============================================================
+// Year-over-Year Monthly Data
+// ============================================================
+
+export async function sbGetYoYData(year: number): Promise<YoYMonthlyPoint[]> {
+  const sb = supabase();
+  const { data: invoices } = await sb.from("invoices").select("invoice_amount, billed_at");
+
+  const allInvoices = (invoices ?? []) as Record<string, unknown>[];
+  const currentYearMonthly = new Array(12).fill(0);
+  const prevYearMonthly = new Array(12).fill(0);
+
+  for (const inv of allInvoices) {
+    const billedAt = inv.billed_at as string;
+    if (!billedAt) continue;
+    const d = new Date(billedAt);
+    if (isNaN(d.getTime())) continue;
+    const amount = safeNum(inv.invoice_amount);
+    if (d.getFullYear() === year) {
+      currentYearMonthly[d.getMonth()] += amount;
+    } else if (d.getFullYear() === year - 1) {
+      prevYearMonthly[d.getMonth()] += amount;
+    }
+  }
+
+  return Array.from({ length: 12 }, (_, i) => {
+    const curr = currentYearMonthly[i];
+    const prev = prevYearMonthly[i];
+    const diff = curr - prev;
+    return {
+      month: i + 1,
+      current_year: curr,
+      previous_year: prev,
+      diff,
+      diff_rate: prev > 0 ? (diff / prev) * 100 : 0,
+    };
+  });
+}
+
+// ============================================================
+// Staff Performance
+// ============================================================
+
+export async function sbGetStaffPerformance(): Promise<StaffPerformance[]> {
+  const orgId = await getOrgId();
+  const sb = supabase();
+
+  const [{ data: profiles }, { data: projects }, { data: projectItems }, { data: invoices }] = await Promise.all([
+    sb.from("profiles").select("id, display_name").eq("org_id", orgId),
+    sb.from("projects").select("id, assigned_staff_id"),
+    sb.from("project_items").select("project_id, quantity, cost_price, selling_price"),
+    sb.from("invoices").select("project_id, invoice_amount"),
+  ]);
+
+  const allProfiles = (profiles ?? []) as Record<string, unknown>[];
+  const allProjects = (projects ?? []) as Record<string, unknown>[];
+  const allItems = (projectItems ?? []) as Record<string, unknown>[];
+  const allInvoices = (invoices ?? []) as Record<string, unknown>[];
+
+  // プロジェクト別の売上・原価を集計
+  const projectSales = new Map<string, number>();
+  const projectCost = new Map<string, number>();
+  for (const inv of allInvoices) {
+    const pid = inv.project_id as string;
+    projectSales.set(pid, (projectSales.get(pid) ?? 0) + safeNum(inv.invoice_amount));
+  }
+  for (const item of allItems) {
+    const pid = item.project_id as string;
+    const qty = safeNum(item.quantity);
+    projectCost.set(pid, (projectCost.get(pid) ?? 0) + safeNum(item.cost_price) * qty);
+  }
+
+  // 担当者別に集計
+  const staffMap = new Map<string, { project_count: number; total_sales: number; total_cost: number }>();
+  for (const p of allProjects) {
+    const staffId = p.assigned_staff_id as string | null;
+    if (!staffId) continue;
+    const pid = p.id as string;
+    const existing = staffMap.get(staffId) ?? { project_count: 0, total_sales: 0, total_cost: 0 };
+    existing.project_count += 1;
+    existing.total_sales += projectSales.get(pid) ?? 0;
+    existing.total_cost += projectCost.get(pid) ?? 0;
+    staffMap.set(staffId, existing);
+  }
+
+  const profileMap = new Map<string, string>();
+  for (const p of allProfiles) {
+    profileMap.set(p.id as string, (p.display_name as string) || "未設定");
+  }
+
+  return Array.from(staffMap.entries())
+    .map(([staff_id, v]) => {
+      const profit = v.total_sales - v.total_cost;
+      return {
+        staff_id,
+        display_name: profileMap.get(staff_id) ?? "不明",
+        project_count: v.project_count,
+        total_sales: v.total_sales,
+        total_cost: v.total_cost,
+        total_profit: profit,
+        margin_rate: v.total_sales > 0 ? (profit / v.total_sales) * 100 : 0,
+      };
+    })
+    .sort((a, b) => b.total_sales - a.total_sales);
+}
+
+// ============================================================
+// Staff Monthly Targets
+// ============================================================
+
+export async function sbGetTargets(year: number): Promise<StaffMonthlyTarget[]> {
+  const orgId = await getOrgId();
+  const { data, error } = await supabase()
+    .from("staff_monthly_targets")
+    .select("id, staff_id, year, month, target_sales, target_profit, target_projects")
+    .eq("org_id", orgId)
+    .eq("year", year)
+    .order("month");
+  if (error) throw new Error("目標取得失敗: " + error.message);
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    staff_id: row.staff_id as string,
+    year: safeNum(row.year),
+    month: safeNum(row.month),
+    target_sales: safeNum(row.target_sales),
+    target_profit: safeNum(row.target_profit),
+    target_projects: safeNum(row.target_projects),
+  }));
+}
+
+export async function sbUpsertTarget(target: StaffMonthlyTarget): Promise<StaffMonthlyTarget> {
+  const orgId = await getOrgId();
+  const sb = supabase();
+
+  // 既存レコードを検索
+  const { data: existing } = await sb
+    .from("staff_monthly_targets")
+    .select("id")
+    .eq("org_id", orgId)
+    .eq("staff_id", target.staff_id)
+    .eq("year", target.year)
+    .eq("month", target.month)
+    .maybeSingle();
+
+  if (existing) {
+    // UPDATE
+    const { data, error } = await sb
+      .from("staff_monthly_targets")
+      .update({
+        target_sales: safeNum(target.target_sales),
+        target_profit: safeNum(target.target_profit),
+        target_projects: safeNum(target.target_projects),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existing.id)
+      .select("id, staff_id, year, month, target_sales, target_profit, target_projects")
+      .single();
+    if (error || !data) throw new Error("目標更新失敗: " + (error?.message ?? ""));
+    return {
+      id: data.id as string,
+      staff_id: data.staff_id as string,
+      year: safeNum(data.year),
+      month: safeNum(data.month),
+      target_sales: safeNum(data.target_sales),
+      target_profit: safeNum(data.target_profit),
+      target_projects: safeNum(data.target_projects),
+    };
+  } else {
+    // INSERT
+    const { data, error } = await sb
+      .from("staff_monthly_targets")
+      .insert({
+        org_id: orgId,
+        staff_id: target.staff_id,
+        year: target.year,
+        month: target.month,
+        target_sales: safeNum(target.target_sales),
+        target_profit: safeNum(target.target_profit),
+        target_projects: safeNum(target.target_projects),
+      })
+      .select("id, staff_id, year, month, target_sales, target_profit, target_projects")
+      .single();
+    if (error || !data) throw new Error("目標登録失敗: " + (error?.message ?? ""));
+    return {
+      id: data.id as string,
+      staff_id: data.staff_id as string,
+      year: safeNum(data.year),
+      month: safeNum(data.month),
+      target_sales: safeNum(data.target_sales),
+      target_profit: safeNum(data.target_profit),
+      target_projects: safeNum(data.target_projects),
+    };
+  }
+}
+
+// ============================================================
+// Target vs Actual
+// ============================================================
+
+export async function sbGetTargetVsActual(year: number, month?: number): Promise<StaffTargetVsActual[]> {
+  const orgId = await getOrgId();
+  const sb = supabase();
+
+  // 目標を取得
+  let targetQuery = sb
+    .from("staff_monthly_targets")
+    .select("staff_id, target_sales, target_profit, target_projects")
+    .eq("org_id", orgId)
+    .eq("year", year);
+  if (month) targetQuery = targetQuery.eq("month", month);
+  const { data: targets } = await targetQuery;
+
+  // 担当者名を取得
+  const { data: profiles } = await sb
+    .from("profiles")
+    .select("id, display_name")
+    .eq("org_id", orgId);
+
+  // 実績データを取得
+  const [{ data: projects }, { data: projectItems }, { data: invoices }] = await Promise.all([
+    sb.from("projects").select("id, assigned_staff_id"),
+    sb.from("project_items").select("project_id, quantity, cost_price, selling_price"),
+    sb.from("invoices").select("project_id, invoice_amount, billed_at"),
+  ]);
+
+  const allProjects = (projects ?? []) as Record<string, unknown>[];
+  const allItems = (projectItems ?? []) as Record<string, unknown>[];
+  const allInvoices = (invoices ?? []) as Record<string, unknown>[];
+
+  // 期間内の請求からプロジェクト別売上
+  const projectSales = new Map<string, number>();
+  for (const inv of allInvoices) {
+    const billedAt = inv.billed_at as string;
+    if (!billedAt) continue;
+    const d = new Date(billedAt);
+    if (d.getFullYear() !== year) continue;
+    if (month && d.getMonth() + 1 !== month) continue;
+    const pid = inv.project_id as string;
+    projectSales.set(pid, (projectSales.get(pid) ?? 0) + safeNum(inv.invoice_amount));
+  }
+
+  // プロジェクト別原価
+  const projectCost = new Map<string, number>();
+  for (const item of allItems) {
+    const pid = item.project_id as string;
+    const qty = safeNum(item.quantity);
+    projectCost.set(pid, (projectCost.get(pid) ?? 0) + safeNum(item.cost_price) * qty);
+  }
+
+  // 担当者別実績
+  const staffActual = new Map<string, { sales: number; cost: number; projects: number }>();
+  for (const p of allProjects) {
+    const staffId = p.assigned_staff_id as string | null;
+    if (!staffId) continue;
+    const pid = p.id as string;
+    const sales = projectSales.get(pid);
+    if (sales === undefined) continue;
+    const existing = staffActual.get(staffId) ?? { sales: 0, cost: 0, projects: 0 };
+    existing.sales += sales;
+    existing.cost += projectCost.get(pid) ?? 0;
+    existing.projects += 1;
+    staffActual.set(staffId, existing);
+  }
+
+  // 目標を担当者別に合算
+  const staffTargets = new Map<string, { sales: number; profit: number; projects: number }>();
+  for (const t of (targets ?? []) as Record<string, unknown>[]) {
+    const staffId = t.staff_id as string;
+    const existing = staffTargets.get(staffId) ?? { sales: 0, profit: 0, projects: 0 };
+    existing.sales += safeNum(t.target_sales);
+    existing.profit += safeNum(t.target_profit);
+    existing.projects += safeNum(t.target_projects);
+    staffTargets.set(staffId, existing);
+  }
+
+  const profileMap = new Map<string, string>();
+  for (const p of (profiles ?? []) as Record<string, unknown>[]) {
+    profileMap.set(p.id as string, (p.display_name as string) || "未設定");
+  }
+
+  // 全スタッフIDをマージ
+  const allStaffIds = new Set([...staffTargets.keys(), ...staffActual.keys()]);
+
+  return Array.from(allStaffIds)
+    .map((staff_id) => {
+      const target = staffTargets.get(staff_id) ?? { sales: 0, profit: 0, projects: 0 };
+      const actual = staffActual.get(staff_id) ?? { sales: 0, cost: 0, projects: 0 };
+      const actualProfit = actual.sales - actual.cost;
+      return {
+        staff_id,
+        display_name: profileMap.get(staff_id) ?? "不明",
+        target_sales: target.sales,
+        target_profit: target.profit,
+        target_projects: target.projects,
+        actual_sales: actual.sales,
+        actual_profit: actualProfit,
+        actual_projects: actual.projects,
+        achievement_rate: target.sales > 0 ? (actual.sales / target.sales) * 100 : 0,
+      };
+    })
+    .sort((a, b) => b.actual_sales - a.actual_sales);
+}
+
+// ============================================================
+// Project Staff Assignment
+// ============================================================
+
+export async function sbUpdateProjectStaff(projectId: string, staffId: string | null): Promise<Project> {
+  const { data, error } = await supabase()
+    .from("projects")
+    .update({ assigned_staff_id: staffId })
+    .eq("id", projectId)
+    .select()
+    .single();
+  if (error || !data) throw new Error("担当者更新失敗: " + (error?.message ?? ""));
+  return toProject(data);
 }

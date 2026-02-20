@@ -12,6 +12,9 @@ import {
   sbGetPayments, sbCreatePayment, sbUpdatePayment,
   sbGetDashboardOverview, sbGetOrgInfo,
   sbGetOrgSettings, sbUpdateOrgSettings,
+  sbGetStaffMembers, sbGetCustomerRanking, sbGetYoYData,
+  sbGetStaffPerformance, sbGetTargets, sbUpsertTarget,
+  sbGetTargetVsActual, sbUpdateProjectStaff,
 } from "./api/supabase-ops";
 export type { OrgInfo, OrgSettings } from "./api/supabase-ops";
 
@@ -62,6 +65,7 @@ export type Project = {
   estimated_start?: string | null;
   estimated_end?: string | null;
   note?: string | null;
+  assigned_staff_id?: string | null;
 };
 
 export type ProjectItem = {
@@ -176,6 +180,8 @@ export type DashboardSummary = {
   payment_remaining_amount: number;
   item_total_amount: number;
 };
+
+export type { CustomerRankingItem, YoYMonthlyPoint, StaffPerformance, StaffMonthlyTarget, StaffTargetVsActual, StaffMember } from "./api/types";
 
 // ============================================================
 // Utilities
@@ -336,6 +342,15 @@ export async function getDashboardOverview() {
 export { sbGetOrgInfo as getOrgInfo };
 export { sbGetOrgSettings as getOrgSettings };
 export { sbUpdateOrgSettings as updateOrgSettings };
+
+export async function getStaffMembers() { return sbGetStaffMembers(); }
+export async function getCustomerRanking(period?: { from?: string; to?: string }) { return sbGetCustomerRanking(period); }
+export async function getYoYData(year: number) { return sbGetYoYData(year); }
+export async function getStaffPerformance() { return sbGetStaffPerformance(); }
+export async function getTargets(year: number) { return sbGetTargets(year); }
+export async function upsertTarget(target: import("./api/types").StaffMonthlyTarget) { return sbUpsertTarget(target); }
+export async function getTargetVsActual(year: number, month?: number) { return sbGetTargetVsActual(year, month); }
+export async function updateProjectStaff(projectId: string, staffId: string | null) { return sbUpdateProjectStaff(projectId, staffId); }
 
 // ============================================================
 // Blob helper

@@ -1,8 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
-import { getDashboardOverview, type DashboardOverview } from "../lib/api";
+import {
+  getDashboardOverview, getCustomerRanking, getYoYData,
+  getStaffPerformance, getTargetVsActual, getTargets,
+  getStaffMembers, upsertTarget,
+  type DashboardOverview, type CustomerRankingItem,
+  type YoYMonthlyPoint, type StaffPerformance as StaffPerformanceType,
+  type StaffTargetVsActual, type StaffMember, type StaffMonthlyTarget,
+} from "../lib/api";
+
+const CustomerRanking = dynamic(() => import("../components/dashboard/CustomerRanking"), { ssr: false });
+const YoYGrowthChart = dynamic(() => import("../components/dashboard/YoYGrowthChart"), { ssr: false });
+const StaffPerformanceView = dynamic(() => import("../components/dashboard/StaffPerformance"), { ssr: false });
+const TargetTracking = dynamic(() => import("../components/dashboard/TargetTracking"), { ssr: false });
+const TargetSettingsModal = dynamic(() => import("../components/dashboard/TargetSettingsModal"), { ssr: false });
 
 function yen(value: number) {
   const n = Number(value);
@@ -30,6 +44,17 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Tab system
+  const [activeTab, setActiveTab] = useState<string>("projects");
+  const [customerRanking, setCustomerRanking] = useState<CustomerRankingItem[] | null>(null);
+  const [yoyData, setYoyData] = useState<YoYMonthlyPoint[] | null>(null);
+  const [staffPerf, setStaffPerf] = useState<StaffPerformanceType[] | null>(null);
+  const [targetData, setTargetData] = useState<StaffTargetVsActual[] | null>(null);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+  const [targets, setTargets] = useState<StaffMonthlyTarget[]>([]);
+  const [showTargetModal, setShowTargetModal] = useState(false);
+  const [tabLoading, setTabLoading] = useState(false);
+
   const load = async () => {
     setLoading(true);
     setError("");
@@ -43,6 +68,47 @@ export default function DashboardPage() {
   };
 
   useEffect(() => { void load(); }, []);
+
+  // Tab data loading
+  useEffect(() => {
+    if (activeTab === "projects" || !activeTab) return;
+
+    let cancelled = false;
+    setTabLoading(true);
+
+    const loadTab = async () => {
+      try {
+        if (activeTab === "customers" && !customerRanking) {
+          const d = await getCustomerRanking();
+          if (!cancelled) setCustomerRanking(d);
+        } else if (activeTab === "yoy" && !yoyData) {
+          const d = await getYoYData(new Date().getFullYear());
+          if (!cancelled) setYoyData(d);
+        } else if (activeTab === "staff" && !staffPerf) {
+          const d = await getStaffPerformance();
+          if (!cancelled) setStaffPerf(d);
+        } else if (activeTab === "targets") {
+          const year = new Date().getFullYear();
+          const [tva, sm, tg] = await Promise.all([
+            getTargetVsActual(year),
+            getStaffMembers(),
+            getTargets(year),
+          ]);
+          if (!cancelled) {
+            setTargetData(tva);
+            setStaffMembers(sm);
+            setTargets(tg);
+          }
+        }
+      } catch (e) {
+        console.error("Tab data load error:", e);
+      } finally {
+        if (!cancelled) setTabLoading(false);
+      }
+    };
+    loadTab();
+    return () => { cancelled = true; };
+  }, [activeTab]);
 
   const chartPeak = useMemo(() => {
     if (!data) return 1;
@@ -171,56 +237,106 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* 稼働案件テーブル */}
-      <div className="card">
-        <div className="card-title">稼働案件一覧</div>
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>案件</th>
-                <th>顧客</th>
-                <th>ステータス</th>
-                <th className="text-right">売値合計</th>
-                <th className="text-right">原価合計</th>
-                <th className="text-right">粗利</th>
-                <th className="text-right">粗利率</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(d?.active_projects ?? []).length === 0 ? (
-                <tr className="empty-row"><td colSpan={8}>稼働案件はありません</td></tr>
-              ) : (
-                (d?.active_projects ?? []).map((p) => (
-                  <tr key={p.project_id}>
-                    <td>
-                      <span className="text-mono">{p.project_id}</span>
-                      <br />
-                      <span style={{ fontSize: 12 }}>{p.project_name}</span>
-                    </td>
-                    <td>{p.customer_name}</td>
-                    <td><span className={statusBadgeClass(p.project_status)}>{p.project_status}</span></td>
-                    <td className="text-right">{yen(p.selling_total)}</td>
-                    <td className="text-right">{yen(p.cost_total)}</td>
-                    <td className="text-right" style={{ fontWeight: 600 }}>{yen(p.margin)}</td>
-                    <td className="text-right">
-                      <span className={p.margin_rate >= 30 ? "is-positive" : p.margin_rate >= 20 ? "" : "is-negative"} style={{ fontWeight: 600 }}>
-                        {pct(p.margin_rate)}
-                      </span>
-                    </td>
-                    <td>
-                      <Link href={`/projects/${p.project_id}`} className="btn btn-sm" style={{ textDecoration: "none" }}>
-                        開く
-                      </Link>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* Analytics Tabs */}
+      <div className="dash-section-tabs">
+        {[
+          { id: "projects", label: "稼働案件" },
+          { id: "customers", label: "顧客ランキング" },
+          { id: "yoy", label: "前年比" },
+          { id: "staff", label: "スタッフ実績" },
+          { id: "targets", label: "目標管理" },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            className={`dash-section-tab${activeTab === tab.id ? " is-active" : ""}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
+
+      {/* Tab content */}
+      {tabLoading && activeTab !== "projects" ? (
+        <div className="card">
+          <p style={{ textAlign: "center", padding: 40, color: "var(--c-text-4)" }}>読み込み中...</p>
+        </div>
+      ) : activeTab === "projects" ? (
+        <div className="card">
+          <div className="card-title">稼働案件一覧</div>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>案件</th>
+                  <th>顧客</th>
+                  <th>ステータス</th>
+                  <th className="text-right">売値合計</th>
+                  <th className="text-right">原価合計</th>
+                  <th className="text-right">粗利</th>
+                  <th className="text-right">粗利率</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(d?.active_projects ?? []).length === 0 ? (
+                  <tr className="empty-row"><td colSpan={8}>稼働案件はありません</td></tr>
+                ) : (
+                  (d?.active_projects ?? []).map((p) => (
+                    <tr key={p.project_id}>
+                      <td>
+                        <span className="text-mono">{p.project_id}</span>
+                        <br />
+                        <span style={{ fontSize: 12 }}>{p.project_name}</span>
+                      </td>
+                      <td>{p.customer_name}</td>
+                      <td><span className={statusBadgeClass(p.project_status)}>{p.project_status}</span></td>
+                      <td className="text-right">{yen(p.selling_total)}</td>
+                      <td className="text-right">{yen(p.cost_total)}</td>
+                      <td className="text-right" style={{ fontWeight: 600 }}>{yen(p.margin)}</td>
+                      <td className="text-right">
+                        <span className={p.margin_rate >= 30 ? "is-positive" : p.margin_rate >= 20 ? "" : "is-negative"} style={{ fontWeight: 600 }}>
+                          {pct(p.margin_rate)}
+                        </span>
+                      </td>
+                      <td>
+                        <Link href={`/projects/${p.project_id}`} className="btn btn-sm" style={{ textDecoration: "none" }}>
+                          開く
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : activeTab === "customers" ? (
+        <CustomerRanking data={customerRanking || []} />
+      ) : activeTab === "yoy" ? (
+        <YoYGrowthChart data={yoyData || []} />
+      ) : activeTab === "staff" ? (
+        <StaffPerformanceView data={staffPerf || []} />
+      ) : activeTab === "targets" ? (
+        <TargetTracking data={targetData || []} onEditTargets={() => setShowTargetModal(true)} />
+      ) : null}
+
+      {showTargetModal && (
+        <TargetSettingsModal
+          isOpen={showTargetModal}
+          onClose={() => setShowTargetModal(false)}
+          year={new Date().getFullYear()}
+          staff={staffMembers}
+          targets={targets}
+          onSave={async (t) => {
+            await upsertTarget(t);
+            const year = new Date().getFullYear();
+            const [tva, tg] = await Promise.all([getTargetVsActual(year), getTargets(year)]);
+            setTargetData(tva);
+            setTargets(tg);
+          }}
+        />
+      )}
 
       {error && <p className="message message-error">{error}</p>}
     </main>

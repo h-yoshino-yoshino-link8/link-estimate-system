@@ -11,10 +11,11 @@ import {
   createPayment, updatePayment,
   updateProjectStatus, exportEstimateHtml,
   addTemplateToProject, getEstimateTemplates,
+  getStaffMembers, updateProjectStaff,
   itemCostTotal, itemSellingTotal, itemMargin, marginRate,
   PROJECT_STATUSES,
   type Project, type ProjectItem, type WorkItemMaster, type Invoice, type Payment, type Vendor,
-  type EstimateTemplate,
+  type EstimateTemplate, type StaffMember,
 } from "../../../lib/api";
 
 function yen(value: number) {
@@ -68,6 +69,9 @@ export default function ProjectCockpitPage() {
   const [editingCell, setEditingCell] = useState<{ itemId: number; field: 'quantity' | 'selling_price' | 'cost_price' } | null>(null);
   const [editValue, setEditValue] = useState("");
 
+  // Staff members for assignment
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
+
   // PDF export staff name
   const [staffName, setStaffName] = useState("吉野 博");
 
@@ -91,13 +95,14 @@ export default function ProjectCockpitPage() {
     setLoading(true);
     setMessage("");
     try {
-      const [proj, itemRows, wiRows, invRows, payRows, vendorRows] = await Promise.all([
+      const [proj, itemRows, wiRows, invRows, payRows, vendorRows, staffRows] = await Promise.all([
         getProject(projectId),
         getProjectItems(projectId),
         getWorkItems(),
         getInvoices(projectId),
         getPayments(projectId),
         getVendors(),
+        getStaffMembers(),
       ]);
       setProject(proj);
       setItems(itemRows);
@@ -105,6 +110,7 @@ export default function ProjectCockpitPage() {
       setInvoices(invRows);
       setPayments(payRows);
       setVendors(vendorRows);
+      setStaffList(staffRows);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "データ取得失敗");
     } finally {
@@ -486,6 +492,27 @@ export default function ProjectCockpitPage() {
           </p>
         </div>
         <div className="cockpit-actions" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+            担当者
+            <select
+              value={project?.assigned_staff_id || ""}
+              onChange={async (e) => {
+                const staffId = e.target.value || null;
+                try {
+                  await updateProjectStaff(projectId, staffId);
+                  await load();
+                } catch (err) {
+                  setMessage(err instanceof Error ? err.message : "担当者変更失敗");
+                }
+              }}
+              style={{ height: 28, fontSize: 12, padding: "0 6px" }}
+            >
+              <option value="">未割当</option>
+              {staffList.map((s) => (
+                <option key={s.id} value={s.id}>{s.display_name}</option>
+              ))}
+            </select>
+          </label>
           <input
             type="text"
             value={staffName}

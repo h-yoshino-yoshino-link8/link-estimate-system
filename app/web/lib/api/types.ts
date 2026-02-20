@@ -45,6 +45,7 @@ export type Project = {
   estimated_start?: string | null;
   estimated_end?: string | null;
   note?: string | null;
+  assigned_staff_id?: string | null;
 };
 
 export type ProjectItem = {
@@ -158,4 +159,60 @@ export type DashboardSummary = {
   payment_total_amount: number;
   payment_remaining_amount: number;
   item_total_amount: number;
+};
+
+export type CustomerRankingItem = {
+  customer_id: string;
+  customer_name: string;
+  total_sales: number;
+  total_cost: number;
+  total_profit: number;
+  project_count: number;
+  margin_rate: number;
+};
+
+export type YoYMonthlyPoint = {
+  month: number;
+  current_year: number;
+  previous_year: number;
+  diff: number;
+  diff_rate: number;
+};
+
+export type StaffPerformance = {
+  staff_id: string;
+  display_name: string;
+  project_count: number;
+  total_sales: number;
+  total_cost: number;
+  total_profit: number;
+  margin_rate: number;
+};
+
+export type StaffMonthlyTarget = {
+  id?: string;
+  staff_id: string;
+  year: number;
+  month: number;
+  target_sales: number;
+  target_profit: number;
+  target_projects: number;
+};
+
+export type StaffTargetVsActual = {
+  staff_id: string;
+  display_name: string;
+  target_sales: number;
+  target_profit: number;
+  target_projects: number;
+  actual_sales: number;
+  actual_profit: number;
+  actual_projects: number;
+  achievement_rate: number;
+};
+
+export type StaffMember = {
+  id: string;
+  display_name: string;
+  role: string;
 };
