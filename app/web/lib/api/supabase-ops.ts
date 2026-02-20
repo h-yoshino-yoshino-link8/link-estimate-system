@@ -11,6 +11,7 @@ import type {
   CustomerRankingItem, YoYMonthlyPoint, StaffPerformance,
   StaffMonthlyTarget, StaffTargetVsActual, StaffMember,
   CollectionMetrics, UnpaidInvoice,
+  BankDashboardData, MonthlyMarginTrend, CashPositionPoint,
 } from "./types";
 
 function supabase() { return createClient(); }
@@ -1747,4 +1748,323 @@ export async function sbGetPaymentsWithProjects(
   if (period?.to) result = result.filter((p) => (p.paid_at ?? "") <= period.to!);
 
   return result;
+}
+
+// ============================================================
+// Phase 2: 銀行融資指標（Bank Dashboard）
+// ============================================================
+
+export async function sbGetBankDashboard(): Promise<BankDashboardData> {
+  const sb = supabase();
+
+  const [
+    { data: invoices },
+    { data: payments },
+    { data: projectItems },
+    { data: projects },
+  ] = await Promise.all([
+    sb.from("invoices").select("*"),
+    sb.from("payments").select("*"),
+    sb.from("project_items").select("project_id, quantity, cost_price, selling_price"),
+    sb.from("projects").select("id, created_at"),
+  ]);
+
+  const allInvoices = (invoices ?? []) as Record<string, unknown>[];
+  const allPayments = (payments ?? []) as Record<string, unknown>[];
+  const allItems = (projectItems ?? []) as Record<string, unknown>[];
+  const allProjects = (projects ?? []) as Record<string, unknown>[];
+
+  const today = new Date();
+
+  // --- 月次売上・原価の集計（過去12ヶ月） ---
+  const monthlyData = new Map<string, { sales: number; cost: number; invoiceCount: number; collectionAmt: number }>();
+
+  // 12ヶ月分の枠を作る
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    monthlyData.set(key, { sales: 0, cost: 0, invoiceCount: 0, collectionAmt: 0 });
+  }
+
+  // プロジェクト別原価マップ
+  const projectCostMap = new Map<string, number>();
+  for (const item of allItems) {
+    const pid = item.project_id as string;
+    const cost = safeNum(item.cost_price) * safeNum(item.quantity);
+    projectCostMap.set(pid, (projectCostMap.get(pid) ?? 0) + cost);
+  }
+
+  // プロジェクト作成月マップ
+  const projectMonthMap = new Map<string, string>();
+  for (const p of allProjects) {
+    const created = p.created_at as string;
+    if (created) {
+      projectMonthMap.set(p.id as string, created.slice(0, 7));
+    }
+  }
+
+  // 請求データから月次売上を集計
+  for (const inv of allInvoices) {
+    const billedAt = inv.billed_at as string;
+    if (!billedAt) continue;
+    const monthKey = billedAt.slice(0, 7);
+    const entry = monthlyData.get(monthKey);
+    if (!entry) continue;
+    entry.sales += safeNum(inv.invoice_amount);
+    entry.invoiceCount += 1;
+    entry.collectionAmt += safeNum(inv.paid_amount);
+  }
+
+  // 月ごとの原価をプロジェクト作成月で振り分け
+  for (const [pid, cost] of projectCostMap.entries()) {
+    const month = projectMonthMap.get(pid);
+    if (!month) continue;
+    const entry = monthlyData.get(month);
+    if (entry) entry.cost += cost;
+  }
+
+  // --- 月次粗利率トレンド ---
+  const monthly_margin_trend: MonthlyMarginTrend[] = [];
+  for (const [month, data] of monthlyData.entries()) {
+    const grossProfit = data.sales - data.cost;
+    const rate = data.sales > 0 ? (grossProfit / data.sales) * 100 : 0;
+    monthly_margin_trend.push({
+      month,
+      sales: data.sales,
+      cost: data.cost,
+      gross_profit: grossProfit,
+      gross_margin_rate: Math.round(rate * 10) / 10,
+    });
+  }
+
+  // --- キャッシュポジション推移 ---
+  // 各月末時点での売掛・買掛残高を推計
+  const monthKeys = Array.from(monthlyData.keys());
+  const cash_position_trend: CashPositionPoint[] = [];
+
+  // 累積的に計算
+  let cumulativeReceivable = 0;
+  let cumulativePayable = 0;
+
+  for (const month of monthKeys) {
+    const data = monthlyData.get(month)!;
+    // 売掛 = 売上 - 回収
+    cumulativeReceivable += data.sales - data.collectionAmt;
+    // 買掛 = 原価 - 支払（簡易推計: 原価の一定割合が月内支払と仮定）
+    const monthPayments = allPayments
+      .filter((p) => {
+        const paidAt = p.paid_at as string | null;
+        return paidAt && paidAt.slice(0, 7) === month;
+      })
+      .reduce((s, p) => s + safeNum(p.paid_amount), 0);
+    cumulativePayable += data.cost - monthPayments;
+
+    cash_position_trend.push({
+      month,
+      receivable: Math.max(cumulativeReceivable, 0),
+      payable: Math.max(cumulativePayable, 0),
+      cash_position: cumulativeReceivable - cumulativePayable,
+    });
+  }
+
+  // --- DSO（売上債権回収日数）---
+  const totalReceivable = allInvoices.reduce((s, x) => s + safeNum(x.remaining_amount), 0);
+  const totalAnnualSales = allInvoices.reduce((s, x) => s + safeNum(x.invoice_amount), 0);
+  const dso = totalAnnualSales > 0 ? Math.round((totalReceivable / totalAnnualSales) * 365) : 0;
+
+  // DSO推移（月次）
+  const dso_trend: { month: string; dso: number }[] = [];
+  let runningReceivable = 0;
+  let runningSales = 0;
+  for (const month of monthKeys) {
+    const data = monthlyData.get(month)!;
+    runningSales += data.sales;
+    runningReceivable += data.sales - data.collectionAmt;
+    const monthDso = runningSales > 0 ? Math.round((Math.max(runningReceivable, 0) / runningSales) * 365) : 0;
+    dso_trend.push({ month, dso: monthDso });
+  }
+
+  // --- その他の指標 ---
+  const totalPayable = allPayments.reduce((s, x) => s + safeNum(x.remaining_amount), 0);
+  const current_ratio = totalPayable > 0 ? Math.round((totalReceivable / totalPayable) * 100) / 100 : 0;
+
+  // 平均回収日数（入金済み請求の billed_at → 支払い完了日までの日数）
+  let totalCollectionDays = 0;
+  let collectedCount = 0;
+  for (const inv of allInvoices) {
+    const paid = safeNum(inv.paid_amount);
+    const amount = safeNum(inv.invoice_amount);
+    if (paid >= amount && amount > 0) {
+      const billed = new Date(inv.billed_at as string);
+      const due = new Date(inv.due_date as string);
+      const days = Math.max(0, Math.floor((due.getTime() - billed.getTime()) / (1000 * 60 * 60 * 24)));
+      totalCollectionDays += days;
+      collectedCount++;
+    }
+  }
+  const avg_collection_days = collectedCount > 0 ? Math.round(totalCollectionDays / collectedCount) : 30;
+
+  // 平均支払日数
+  let totalPaymentDays = 0;
+  let paidCount = 0;
+  for (const pay of allPayments) {
+    const paidAt = pay.paid_at as string | null;
+    const createdAt = pay.created_at as string | null;
+    if (paidAt && createdAt) {
+      const created = new Date(createdAt);
+      const paid = new Date(paidAt);
+      const days = Math.max(0, Math.floor((paid.getTime() - created.getTime()) / (1000 * 60 * 60 * 24)));
+      totalPaymentDays += days;
+      paidCount++;
+    }
+  }
+  const avg_payment_days = paidCount > 0 ? Math.round(totalPaymentDays / paidCount) : 30;
+
+  return {
+    monthly_margin_trend,
+    cash_position_trend,
+    dso,
+    dso_trend,
+    current_ratio,
+    avg_collection_days,
+    avg_payment_days,
+    working_capital: totalReceivable - totalPayable,
+  };
+}
+
+// ============================================================
+// Phase 2: ダッシュボード高速化版
+// projects テーブルの集計カラムを使用（トリガーで自動更新済み）
+// ============================================================
+
+export async function sbGetDashboardOverviewV2(): Promise<DashboardOverview> {
+  const sb = supabase();
+
+  const [
+    { data: projects },
+    { data: invoices },
+    { data: payments },
+  ] = await Promise.all([
+    sb.from("projects").select("id, customer_name, project_name, project_status, created_at, total_cost, total_selling, margin, margin_rate"),
+    sb.from("invoices").select("invoice_amount, paid_amount, remaining_amount, billed_at"),
+    sb.from("payments").select("ordered_amount, paid_amount, remaining_amount, vendor_name"),
+  ]);
+
+  const allProjects = (projects ?? []) as Record<string, unknown>[];
+  const allInvoices = (invoices ?? []) as Record<string, unknown>[];
+  const allPayments = (payments ?? []) as Record<string, unknown>[];
+
+  const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+
+  const monthly: DashboardMonthlySalesPoint[] = Array.from({ length: 12 }, (_, i) => ({
+    month: `${i + 1}月`, amount: 0, cost: 0, margin: 0,
+  }));
+
+  let current_month_sales = 0;
+  let ytd_sales = 0;
+  let last_year_ytd_sales = 0;
+  let all_time_sales = 0;
+
+  for (const inv of allInvoices) {
+    const billedStr = inv.billed_at as string;
+    if (!billedStr) continue;
+    const billed = new Date(billedStr);
+    if (isNaN(billed.getTime())) continue;
+    const amount = safeNum(inv.invoice_amount);
+    all_time_sales += amount;
+    if (billed.getFullYear() === currentYear) {
+      monthly[billed.getMonth()].amount += amount;
+      if (billed.getMonth() === currentMonth) current_month_sales += amount;
+      if (billed <= today) ytd_sales += amount;
+    } else if (billed.getFullYear() === currentYear - 1) {
+      const lastYearSameDay = new Date(today);
+      lastYearSameDay.setFullYear(currentYear - 1);
+      if (billed <= lastYearSameDay) last_year_ytd_sales += amount;
+    }
+  }
+
+  // projects の集計カラムを直接使用（メモリ集計不要）
+  let all_time_cost = 0;
+  let all_time_selling = 0;
+  let next_month_projection = 0;
+  let pipeline_total = 0;
+  let pipeline_count = 0;
+  const statusCounts: Record<string, number> = {};
+
+  for (const p of allProjects) {
+    const status = p.project_status as string;
+    statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+    const selling = safeNum(p.total_selling);
+    const cost = safeNum(p.total_cost);
+    all_time_selling += selling;
+    all_time_cost += cost;
+    if (status === "見積中" || status === "受注") {
+      pipeline_total += selling;
+      pipeline_count++;
+    }
+    if (status === "受注" || status === "施工中") {
+      next_month_projection += selling;
+    }
+  }
+
+  const receivable_balance = allInvoices.reduce((s, x) => s + safeNum(x.remaining_amount), 0);
+  const payable_balance = allPayments.reduce((s, x) => s + safeNum(x.remaining_amount), 0);
+
+  const yoy_growth_rate = last_year_ytd_sales > 0
+    ? ((ytd_sales - last_year_ytd_sales) / last_year_ytd_sales) * 100 : 0;
+
+  const avg_margin_rate = all_time_selling > 0
+    ? ((all_time_selling - all_time_cost) / all_time_selling) * 100 : 0;
+
+  const activeStatuses = new Set(["見積中", "受注", "施工中", "請求済"]);
+  const active_projects: DashboardActiveProject[] = allProjects
+    .filter((p) => activeStatuses.has(p.project_status as string))
+    .map((p) => ({
+      project_id: p.id as string,
+      project_name: p.project_name as string,
+      customer_name: p.customer_name as string,
+      project_status: p.project_status as string,
+      selling_total: safeNum(p.total_selling),
+      cost_total: safeNum(p.total_cost),
+      margin: safeNum(p.margin),
+      margin_rate: safeNum(p.margin_rate),
+      created_at: (p.created_at as string).slice(0, 10),
+    }));
+
+  const vendorTotals = new Map<string, { amount: number; count: number }>();
+  for (const pay of allPayments) {
+    const name = pay.vendor_name as string;
+    const existing = vendorTotals.get(name) ?? { amount: 0, count: 0 };
+    existing.amount += safeNum(pay.ordered_amount);
+    existing.count += 1;
+    vendorTotals.set(name, existing);
+  }
+  const top_vendors = Array.from(vendorTotals.entries())
+    .map(([vendor_name, v]) => ({ vendor_name, ...v }))
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 5);
+
+  return {
+    current_month_sales,
+    next_month_projection,
+    pipeline_total,
+    pipeline_count,
+    ytd_sales,
+    last_year_ytd_sales,
+    yoy_growth_rate,
+    receivable_balance,
+    payable_balance,
+    cash_position: receivable_balance - payable_balance,
+    avg_margin_rate,
+    all_time_sales,
+    all_time_cost,
+    all_time_margin: all_time_selling - all_time_cost,
+    active_project_count: active_projects.length,
+    status_counts: statusCounts,
+    monthly_sales: monthly,
+    active_projects,
+    top_vendors,
+  };
 }

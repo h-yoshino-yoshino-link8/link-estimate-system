@@ -281,3 +281,47 @@ export type EmailLog = {
   error_message?: string | null;
   sent_at: string;
 };
+
+/* ── Phase 2: 銀行融資指標 ── */
+
+export type MonthlyKpi = {
+  year: number;
+  month: number;
+  total_sales: number;
+  total_cost: number;
+  gross_profit: number;
+  gross_margin_rate: number;
+  project_count: number;
+  invoice_count: number;
+  collection_amount: number;
+  receivable_balance: number;
+  payable_balance: number;
+  cash_position: number;
+  dso: number;
+};
+
+export type MonthlyMarginTrend = {
+  month: string;           // "2026-01" format
+  sales: number;
+  cost: number;
+  gross_profit: number;
+  gross_margin_rate: number;
+};
+
+export type CashPositionPoint = {
+  month: string;           // "2026-01" format
+  receivable: number;
+  payable: number;
+  cash_position: number;
+};
+
+export type BankDashboardData = {
+  monthly_margin_trend: MonthlyMarginTrend[];
+  cash_position_trend: CashPositionPoint[];
+  dso: number;
+  dso_trend: { month: string; dso: number }[];
+  current_ratio: number;     // 売掛/買掛比率
+  avg_collection_days: number;
+  avg_payment_days: number;
+  working_capital: number;   // 運転資金 = 売掛 - 買掛
+};

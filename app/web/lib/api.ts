@@ -10,13 +10,14 @@ import {
   sbGetProjectItems, sbCreateProjectItem, sbUpdateProjectItem, sbDeleteProjectItem, sbReorderProjectItems,
   sbGetInvoices, sbCreateInvoice, sbUpdateInvoice,
   sbGetPayments, sbCreatePayment, sbUpdatePayment,
-  sbGetDashboardOverview, sbGetOrgInfo,
+  sbGetDashboardOverview, sbGetDashboardOverviewV2, sbGetOrgInfo,
   sbGetOrgSettings, sbUpdateOrgSettings,
   sbGetStaffMembers, sbGetCustomerRanking, sbGetYoYData,
   sbGetStaffPerformance, sbGetTargets, sbUpsertTarget,
   sbGetTargetVsActual, sbUpdateProjectStaff,
   sbGetCollectionMetrics, sbGetUnpaidInvoices, sbGetUpcomingPaymentReminders,
   sbGetCustomerDetail, sbGetInvoicesWithProjects, sbGetPaymentsWithProjects,
+  sbGetBankDashboard,
 } from "./api/supabase-ops";
 import {
   sbGetSystemStatus, sbGetUserProfiles, sbUpdateUserRole,
@@ -185,6 +186,9 @@ export type { CustomerDetail, InvoiceWithProject, PaymentWithProject } from "./a
 
 // Project B: 管理
 export type { TableStat, UserProfile, EmailLog } from "./api/types";
+
+// Phase 2: 銀行融資指標
+export type { BankDashboardData, MonthlyMarginTrend, CashPositionPoint } from "./api/types";
 
 // ============================================================
 // Utilities
@@ -372,6 +376,10 @@ export async function getUserProfiles() { return sbGetUserProfiles(); }
 export async function updateUserRole(userId: string, role: string) { return sbUpdateUserRole(userId, role); }
 export async function getEmailLogs(limit?: number) { return sbGetEmailLogs(limit); }
 export { sbCreateEmailLog as createEmailLog };
+
+// Phase 2: 銀行融資指標
+export async function getBankDashboard() { return sbGetBankDashboard(); }
+export async function getDashboardOverviewV2() { return sbGetDashboardOverviewV2(); }
 
 // ============================================================
 // Blob helper

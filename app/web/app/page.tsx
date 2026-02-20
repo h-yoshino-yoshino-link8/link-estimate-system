@@ -8,10 +8,12 @@ import {
   getStaffPerformance, getTargetVsActual, getTargets,
   getStaffMembers, upsertTarget,
   getCollectionMetrics, getUnpaidInvoices,
+  getBankDashboard,
   type DashboardOverview, type CustomerRankingItem,
   type YoYMonthlyPoint, type StaffPerformance as StaffPerformanceType,
   type StaffTargetVsActual, type StaffMember, type StaffMonthlyTarget,
   type CollectionMetrics, type UnpaidInvoice,
+  type BankDashboardData,
 } from "../lib/api";
 
 const CustomerRanking = dynamic(() => import("../components/dashboard/CustomerRanking"), { ssr: false });
@@ -20,6 +22,7 @@ const StaffPerformanceView = dynamic(() => import("../components/dashboard/Staff
 const TargetTracking = dynamic(() => import("../components/dashboard/TargetTracking"), { ssr: false });
 const TargetSettingsModal = dynamic(() => import("../components/dashboard/TargetSettingsModal"), { ssr: false });
 const PaymentOverview = dynamic(() => import("../components/dashboard/PaymentOverview"), { ssr: false });
+const BankDashboard = dynamic(() => import("../components/dashboard/BankDashboard"), { ssr: false });
 const ReportView = dynamic(() => import("../components/dashboard/ReportView"), { ssr: false });
 
 function yen(value: number) {
@@ -59,6 +62,7 @@ export default function DashboardPage() {
   const [showTargetModal, setShowTargetModal] = useState(false);
   const [collectionMetrics, setCollectionMetrics] = useState<CollectionMetrics | null>(null);
   const [unpaidInvoices, setUnpaidInvoices] = useState<UnpaidInvoice[] | null>(null);
+  const [bankData, setBankData] = useState<BankDashboardData | null>(null);
   const [tabLoading, setTabLoading] = useState(false);
 
   const load = async () => {
@@ -114,6 +118,9 @@ export default function DashboardPage() {
             setCollectionMetrics(metrics);
             setUnpaidInvoices(invs);
           }
+        } else if (activeTab === "bank" && !bankData) {
+          const bd = await getBankDashboard();
+          if (!cancelled) setBankData(bd);
         }
       } catch (e) {
         console.error("Tab data load error:", e);
@@ -256,6 +263,7 @@ export default function DashboardPage() {
           { id: "staff", label: "スタッフ実績" },
           { id: "targets", label: "目標管理" },
           { id: "payments", label: "入金管理" },
+          { id: "bank", label: "銀行融資" },
           { id: "reports", label: "レポート" },
         ].map((tab) => (
           <button
@@ -335,6 +343,8 @@ export default function DashboardPage() {
         collectionMetrics && unpaidInvoices ? (
           <PaymentOverview metrics={collectionMetrics} invoices={unpaidInvoices} />
         ) : null
+      ) : activeTab === "bank" ? (
+        bankData ? <BankDashboard data={bankData} /> : null
       ) : activeTab === "reports" ? (
         <ReportView />
       ) : null}
