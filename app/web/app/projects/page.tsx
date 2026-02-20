@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 import {
   getProjects, createProjectQuick,
+  getCustomers, getStaffMembers,
   PROJECT_STATUSES,
-  type Project,
+  type Project, type Customer, type StaffMember,
 } from "../../lib/api";
+import { exportProjectsCSV } from "../../lib/csv-export";
 
 function statusBadgeClass(status: string) {
   if (status === "見積中") return "badge badge-default";
@@ -26,6 +28,13 @@ export default function ProjectsPage() {
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+  const [customerFilter, setCustomerFilter] = useState("all");
+  const [staffFilter, setStaffFilter] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
 
   // Quick create - 案件名1つだけ
   const [newName, setNewName] = useState("");
@@ -39,8 +48,14 @@ export default function ProjectsPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const projData = await getProjects();
+      const [projData, custData, staffData] = await Promise.all([
+        getProjects(),
+        getCustomers(),
+        getStaffMembers(),
+      ]);
       setProjects(projData.items);
+      setCustomers(custData);
+      setStaffMembers(staffData);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "データ取得失敗");
     } finally {
@@ -71,8 +86,20 @@ export default function ProjectsPage() {
         (p.site_address ?? "").toLowerCase().includes(q)
       );
     }
+    if (customerFilter !== "all") {
+      list = list.filter((p) => p.customer_id === customerFilter);
+    }
+    if (staffFilter !== "all") {
+      list = list.filter((p) => p.assigned_staff_id === staffFilter);
+    }
+    if (dateFrom) {
+      list = list.filter((p) => p.created_at >= dateFrom);
+    }
+    if (dateTo) {
+      list = list.filter((p) => p.created_at <= dateTo + "T23:59:59");
+    }
     return list;
-  }, [projects, statusFilter, search]);
+  }, [projects, statusFilter, search, customerFilter, staffFilter, dateFrom, dateTo]);
 
   const handleCreate = async () => {
     const name = newName.trim();
@@ -104,7 +131,10 @@ export default function ProjectsPage() {
     <main className="page">
       <div className="page-header">
         <h1>案件管理</h1>
-        <button className="btn" onClick={() => void load()} disabled={loading}>更新</button>
+        <div style={{ display: "flex", gap: "var(--sp-2)" }}>
+          <button className="btn" onClick={() => exportProjectsCSV(filtered)}>CSV出力</button>
+          <button className="btn" onClick={() => void load()} disabled={loading}>更新</button>
+        </div>
       </div>
 
       {/* 新規作成 - 大きいボタン + インライン入力 */}
@@ -173,6 +203,64 @@ export default function ProjectsPage() {
           </button>
         ))}
       </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-3)", marginTop: "var(--sp-2)" }}>
+        <span className="filter-count">{filtered.length}件表示</span>
+        <button
+          className="btn btn-sm btn-ghost"
+          onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
+        >
+          {showAdvancedFilter ? "▲ フィルタを閉じる" : "▼ 詳細フィルタ"}
+        </button>
+      </div>
+
+      {showAdvancedFilter && (
+        <div className="filter-panel">
+          <div className="form-row">
+            <label>
+              顧客
+              <select value={customerFilter} onChange={(e) => setCustomerFilter(e.target.value)}>
+                <option value="all">すべての顧客</option>
+                {customers.map((c) => (
+                  <option key={c.customer_id} value={c.customer_id}>{c.customer_name}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              担当者
+              <select value={staffFilter} onChange={(e) => setStaffFilter(e.target.value)}>
+                <option value="all">すべての担当者</option>
+                {staffMembers.map((s) => (
+                  <option key={s.id} value={s.id}>{s.display_name}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="form-row">
+            <label>
+              作成日（From）
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            </label>
+            <label>
+              作成日（To）
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            </label>
+          </div>
+          <div>
+            <button
+              className="btn btn-sm"
+              onClick={() => {
+                setCustomerFilter("all");
+                setStaffFilter("all");
+                setDateFrom("");
+                setDateTo("");
+              }}
+            >
+              リセット
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Search */}
       {projects.length > 5 && (

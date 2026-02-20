@@ -245,3 +245,25 @@ export type CollectionMetrics = {
   overdue_count: number;
   aging_buckets: AgingBucket[];
 };
+
+/* ── Project A: 検索・集計・エクスポート ── */
+
+export type CustomerDetail = {
+  customer: Customer;
+  projects: Project[];
+  total_sales: number;
+  total_cost: number;
+  total_profit: number;
+  margin_rate: number;
+  project_count: number;
+  monthly_sales: { month: string; amount: number }[];
+};
+
+export type InvoiceWithProject = Invoice & {
+  project_name: string;
+  customer_name: string;
+};
+
+export type PaymentWithProject = Payment & {
+  project_name: string;
+};

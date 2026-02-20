@@ -16,6 +16,7 @@ import {
   sbGetStaffPerformance, sbGetTargets, sbUpsertTarget,
   sbGetTargetVsActual, sbUpdateProjectStaff,
   sbGetCollectionMetrics, sbGetUnpaidInvoices, sbGetUpcomingPaymentReminders,
+  sbGetCustomerDetail, sbGetInvoicesWithProjects, sbGetPaymentsWithProjects,
 } from "./api/supabase-ops";
 export type { OrgInfo, OrgSettings } from "./api/supabase-ops";
 
@@ -184,6 +185,9 @@ export type DashboardSummary = {
 };
 
 export type { CustomerRankingItem, YoYMonthlyPoint, StaffPerformance, StaffMonthlyTarget, StaffTargetVsActual, StaffMember, AgingBucket, UnpaidInvoice, CollectionMetrics } from "./api/types";
+
+// Project A: 検索・集計・エクスポート
+export type { CustomerDetail, InvoiceWithProject, PaymentWithProject } from "./api/types";
 
 // ============================================================
 // Utilities
@@ -357,6 +361,11 @@ export async function updateProjectStaff(projectId: string, staffId: string | nu
 export async function getCollectionMetrics() { return sbGetCollectionMetrics(); }
 export async function getUnpaidInvoices() { return sbGetUnpaidInvoices(); }
 export async function getUpcomingPaymentReminders(daysAhead?: number) { return sbGetUpcomingPaymentReminders(daysAhead); }
+
+// Project A: 検索・集計・エクスポート
+export async function getCustomerDetail(customerId: string) { return sbGetCustomerDetail(customerId); }
+export async function getInvoicesWithProjects(period?: { from?: string; to?: string }) { return sbGetInvoicesWithProjects(period); }
+export async function getPaymentsWithProjects(period?: { from?: string; to?: string }) { return sbGetPaymentsWithProjects(period); }
 
 // ============================================================
 // Blob helper

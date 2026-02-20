@@ -654,3 +654,124 @@ tr.drag-over-below td { box-shadow: inset 0 -2px 0 0 var(--c-primary); }
 @media (max-width: 680px) {
   .aging-kpi-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Project A: 検索・集計・エクスポート ── */
+
+/* フィルタパネル */
+.filter-panel {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+  display: grid;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+.filter-count {
+  font-size: 12px;
+  color: var(--c-text-3);
+  font-weight: 500;
+}
+
+/* 顧客詳細ページ */
+.customer-detail-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+.customer-detail-header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+.back-link {
+  color: var(--c-text-3);
+  text-decoration: none;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.back-link:hover {
+  color: var(--c-primary);
+}
+
+/* レポートビュー */
+.report-controls {
+  display: flex;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.report-controls select {
+  width: auto;
+  min-width: 100px;
+}
+.report-period-label {
+  font-size: 12px;
+  color: var(--c-text-3);
+  font-weight: 500;
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--c-bg);
+  border-radius: var(--r-sm);
+}
+.report-section {
+  margin-top: var(--sp-5);
+}
+.report-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--sp-3);
+}
+.report-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+/* 顧客リンク */
+.customer-link {
+  color: var(--c-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+.customer-link:hover {
+  text-decoration: underline;
+}
+
+/* 顧客月次チャート */
+.customer-chart-wrap {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+  margin-bottom: var(--sp-4);
+}
+.customer-chart-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 var(--sp-3);
+}
+
+/* レスポンシブ */
+@media (max-width: 1024px) {
+  .report-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .report-controls select {
+    width: 100%;
+  }
+}
+@media (max-width: 680px) {
+  .customer-detail-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .filter-panel .form-row {
+    grid-template-columns: 1fr;
+  }
+}

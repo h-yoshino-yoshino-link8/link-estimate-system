@@ -20,6 +20,7 @@ const StaffPerformanceView = dynamic(() => import("../components/dashboard/Staff
 const TargetTracking = dynamic(() => import("../components/dashboard/TargetTracking"), { ssr: false });
 const TargetSettingsModal = dynamic(() => import("../components/dashboard/TargetSettingsModal"), { ssr: false });
 const PaymentOverview = dynamic(() => import("../components/dashboard/PaymentOverview"), { ssr: false });
+const ReportView = dynamic(() => import("../components/dashboard/ReportView"), { ssr: false });
 
 function yen(value: number) {
   const n = Number(value);
@@ -260,6 +261,7 @@ export default function DashboardPage() {
           { id: "staff", label: "スタッフ実績" },
           { id: "targets", label: "目標管理" },
           { id: "payments", label: "入金管理" },
+          { id: "reports", label: "レポート" },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -339,6 +341,8 @@ export default function DashboardPage() {
         collectionMetrics && unpaidInvoices ? (
           <PaymentOverview metrics={collectionMetrics} invoices={unpaidInvoices} />
         ) : null
+      ) : activeTab === "reports" ? (
+        <ReportView />
       ) : null}
 
       {showTargetModal && (

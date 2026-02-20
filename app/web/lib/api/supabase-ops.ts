@@ -1621,3 +1621,130 @@ export async function sbGetUpcomingPaymentReminders(daysAhead: number = 3): Prom
     return due >= today && due <= target;
   });
 }
+
+// ============================================================
+// Project A: 検索・集計・エクスポート
+// ============================================================
+
+export async function sbGetCustomerDetail(customerId: string): Promise<import("./types").CustomerDetail> {
+  const sb = supabase();
+  const orgId = await getOrgId();
+
+  const [custRes, projRes, itemsRes, invRes] = await Promise.all([
+    sb.from("customers").select("*").eq("org_id", orgId).eq("id", customerId).single(),
+    sb.from("projects").select("*").eq("org_id", orgId).eq("customer_id", customerId).order("created_at", { ascending: false }),
+    sb.from("project_items").select("*").eq("org_id", orgId),
+    sb.from("invoices").select("*").eq("org_id", orgId),
+  ]);
+
+  if (!custRes.data) throw new Error("顧客が見つかりません");
+
+  const projects = (projRes.data ?? []).map(toProject);
+  const projectIds = new Set(projects.map((p) => p.project_id));
+
+  // プロジェクト別の原価・売値
+  const costMap = new Map<string, number>();
+  const sellingMap = new Map<string, number>();
+  for (const row of itemsRes.data ?? []) {
+    const pid = row.project_id as string;
+    if (!projectIds.has(pid)) continue;
+    const qty = safeNum(row.quantity);
+    costMap.set(pid, (costMap.get(pid) ?? 0) + safeNum(row.cost_price) * qty);
+    sellingMap.set(pid, (sellingMap.get(pid) ?? 0) + safeNum(row.selling_price) * qty);
+  }
+
+  // 月次売上（請求ベース）
+  const monthlyMap = new Map<string, number>();
+  let totalSales = 0;
+  for (const row of invRes.data ?? []) {
+    const pid = row.project_id as string;
+    if (!projectIds.has(pid)) continue;
+    const amt = safeNum(row.invoice_amount);
+    totalSales += amt;
+    const billedAt = row.billed_at as string | null;
+    if (billedAt) {
+      const key = billedAt.slice(0, 7);
+      monthlyMap.set(key, (monthlyMap.get(key) ?? 0) + amt);
+    }
+  }
+
+  let totalCost = 0;
+  for (const pid of projectIds) {
+    totalCost += costMap.get(pid) ?? 0;
+  }
+  const totalProfit = totalSales - totalCost;
+
+  const monthly_sales = Array.from(monthlyMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, amount]) => ({ month, amount }));
+
+  return {
+    customer: toCustomer(custRes.data),
+    projects,
+    total_sales: totalSales,
+    total_cost: totalCost,
+    total_profit: totalProfit,
+    margin_rate: totalSales > 0 ? (totalProfit / totalSales) * 100 : 0,
+    project_count: projects.length,
+    monthly_sales,
+  };
+}
+
+export async function sbGetInvoicesWithProjects(
+  period?: { from?: string; to?: string },
+): Promise<import("./types").InvoiceWithProject[]> {
+  const sb = supabase();
+  const orgId = await getOrgId();
+
+  const [invRes, projRes] = await Promise.all([
+    sb.from("invoices").select("*").eq("org_id", orgId).order("billed_at", { ascending: false }),
+    sb.from("projects").select("id, project_name, customer_name").eq("org_id", orgId),
+  ]);
+
+  const projMap = new Map(
+    (projRes.data ?? []).map((p: Record<string, unknown>) => [p.id as string, p]),
+  );
+
+  let result = (invRes.data ?? []).map((row: Record<string, unknown>) => {
+    const proj = projMap.get(row.project_id as string);
+    return {
+      ...toInvoice(row),
+      project_name: (proj?.project_name as string) ?? "不明",
+      customer_name: (proj?.customer_name as string) ?? "不明",
+    };
+  });
+
+  if (period?.from) result = result.filter((inv) => inv.billed_at >= period.from!);
+  if (period?.to) result = result.filter((inv) => inv.billed_at <= period.to!);
+
+  return result;
+}
+
+export async function sbGetPaymentsWithProjects(
+  period?: { from?: string; to?: string },
+): Promise<import("./types").PaymentWithProject[]> {
+  const sb = supabase();
+  const orgId = await getOrgId();
+
+  const [payRes, projRes] = await Promise.all([
+    sb.from("payments").select("*").eq("org_id", orgId).order("created_at", { ascending: false }),
+    sb.from("projects").select("id, project_name").eq("org_id", orgId),
+  ]);
+
+  const projMap = new Map(
+    (projRes.data ?? []).map((p: Record<string, unknown>) => [p.id as string, p]),
+  );
+
+  let result = (payRes.data ?? []).map((row: Record<string, unknown>) => {
+    const proj = projMap.get(row.project_id as string);
+    return {
+      ...toPayment(row),
+      project_name: (proj?.project_name as string) ?? "不明",
+    };
+  });
+
+  if (period?.from) result = result.filter((p) => (p.paid_at ?? p.status) >= period.from!);
+  if (period?.to) result = result.filter((p) => (p.paid_at ?? "") <= period.to!);
+
+  return result;
+}

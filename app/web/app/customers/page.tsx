@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
 import {
   getCustomers,
@@ -398,7 +399,11 @@ export default function CustomersPage() {
               <tbody>
                 {customers.map((c) => (
                   <tr key={c.customer_id}>
-                    <td>{c.customer_name}</td>
+                    <td>
+                      <Link href={`/customers/${c.customer_id}`} className="customer-link">
+                        {c.customer_name}
+                      </Link>
+                    </td>
                     <td>{c.contact_name ?? "-"}</td>
                     <td>{c.phone ?? "-"}</td>
                     <td>{c.email || "\u2014"}</td>
