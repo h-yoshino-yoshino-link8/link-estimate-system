@@ -40,6 +40,9 @@ export default function Header() {
           <Link href="/settings" className={pathname === "/settings" ? "is-active" : ""}>
             設定
           </Link>
+          <Link href="/admin" className={pathname === "/admin" ? "is-active" : ""}>
+            管理
+          </Link>
         </nav>
         <div className="topbar-actions">
           {isSupabaseMode && displayName && (
@@ -102,6 +105,13 @@ export default function Header() {
             onClick={() => setMobileMenuOpen(false)}
           >
             設定
+          </Link>
+          <Link
+            href="/admin"
+            className={pathname === "/admin" ? "is-active" : ""}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            管理
           </Link>
           {isSupabaseMode && (
             <button

@@ -267,3 +267,27 @@ export type InvoiceWithProject = Invoice & {
 export type PaymentWithProject = Payment & {
   project_name: string;
 };
+
+/* ── Project B: 管理者向けシステム管理 ── */
+
+export type TableStat = {
+  table_name: string;
+  display_name: string;
+  count: number;
+  description: string;
+};
+
+export type UserProfile = {
+  id: string;
+  display_name: string;
+  role: string;
+};
+
+export type EmailLog = {
+  id: string;
+  to_email: string;
+  subject: string;
+  status: string;
+  error_message?: string | null;
+  sent_at: string;
+};

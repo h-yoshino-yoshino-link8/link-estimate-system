@@ -18,6 +18,10 @@ import {
   sbGetCollectionMetrics, sbGetUnpaidInvoices, sbGetUpcomingPaymentReminders,
   sbGetCustomerDetail, sbGetInvoicesWithProjects, sbGetPaymentsWithProjects,
 } from "./api/supabase-ops";
+import {
+  sbGetSystemStatus, sbGetUserProfiles, sbUpdateUserRole,
+  sbGetEmailLogs, sbCreateEmailLog,
+} from "./api/admin-ops";
 export type { OrgInfo, OrgSettings } from "./api/supabase-ops";
 
 // ============================================================
@@ -188,6 +192,9 @@ export type { CustomerRankingItem, YoYMonthlyPoint, StaffPerformance, StaffMonth
 
 // Project A: 検索・集計・エクスポート
 export type { CustomerDetail, InvoiceWithProject, PaymentWithProject } from "./api/types";
+
+// Project B: 管理
+export type { TableStat, UserProfile, EmailLog } from "./api/types";
 
 // ============================================================
 // Utilities
@@ -366,6 +373,13 @@ export async function getUpcomingPaymentReminders(daysAhead?: number) { return s
 export async function getCustomerDetail(customerId: string) { return sbGetCustomerDetail(customerId); }
 export async function getInvoicesWithProjects(period?: { from?: string; to?: string }) { return sbGetInvoicesWithProjects(period); }
 export async function getPaymentsWithProjects(period?: { from?: string; to?: string }) { return sbGetPaymentsWithProjects(period); }
+
+// Project B: 管理
+export async function getSystemStatus() { return sbGetSystemStatus(); }
+export async function getUserProfiles() { return sbGetUserProfiles(); }
+export async function updateUserRole(userId: string, role: string) { return sbUpdateUserRole(userId, role); }
+export async function getEmailLogs(limit?: number) { return sbGetEmailLogs(limit); }
+export { sbCreateEmailLog as createEmailLog };
 
 // ============================================================
 // Blob helper

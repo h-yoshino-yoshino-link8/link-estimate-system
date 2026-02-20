@@ -73,8 +73,9 @@ export async function GET(request: Request) {
   // 送信元会社名を取得
   const { data: orgs } = await supabase
     .from("organizations")
-    .select("name")
+    .select("id, name")
     .limit(1);
+  const orgId = orgs?.[0]?.id as string | undefined;
   const companyName = orgs?.[0]?.name || "株式会社LinK";
 
   let sent = 0;
@@ -107,8 +108,21 @@ export async function GET(request: Request) {
           </p>
         `,
       });
+      await supabase.from("email_logs").insert({
+        org_id: orgId,
+        to_email: email,
+        subject: `【ご入金予定のお知らせ】${proj.project_name}`,
+        status: "success",
+      });
       sent++;
     } catch (e) {
+      await supabase.from("email_logs").insert({
+        org_id: orgId,
+        to_email: email,
+        subject: `【ご入金予定のお知らせ】${proj.project_name}`,
+        status: "error",
+        error_message: String(e).slice(0, 500),
+      });
       errors.push(`Failed to send to ${email}: ${e}`);
     }
   }

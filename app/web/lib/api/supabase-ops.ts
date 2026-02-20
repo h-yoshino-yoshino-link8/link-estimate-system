@@ -30,7 +30,7 @@ let _cachedUserId: string | null = null;
 let _cacheTimestamp = 0;
 const CACHE_TTL = 60_000; // 60秒
 
-async function getOrgId(): Promise<string> {
+export async function getOrgId(): Promise<string> {
   // 開発バイパス: RLS無効時にAuth不要でテスト可能にする
   const devOrgId = process.env.NEXT_PUBLIC_DEV_ORG_ID;
   if (devOrgId) {
