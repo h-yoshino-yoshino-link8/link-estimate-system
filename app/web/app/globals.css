@@ -617,3 +617,40 @@ tr.drag-over-below td { box-shadow: inset 0 -2px 0 0 var(--c-primary); }
 .auth-link a:hover {
   text-decoration: underline;
 }
+
+/* ===== 入金管理 ===== */
+.aging-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.aging-kpi-value.good { color: var(--c-success); }
+.aging-kpi-value.warning { color: var(--c-warning); }
+.aging-kpi-value.danger { color: var(--c-error); }
+
+.payment-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 1.5rem;
+}
+
+.aging-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.aging-badge.current { background: #dbeafe; color: #1e40af; }
+.aging-badge.over30 { background: #fef3c7; color: #92400e; }
+.aging-badge.over60 { background: #ffedd5; color: #9a3412; }
+.aging-badge.over90 { background: #fee2e2; color: #991b1b; }
+
+@media (max-width: 1024px) {
+  .payment-grid { grid-template-columns: 1fr; }
+  .aging-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 680px) {
+  .aging-kpi-grid { grid-template-columns: 1fr; }
+}

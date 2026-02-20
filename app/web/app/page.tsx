@@ -7,9 +7,11 @@ import {
   getDashboardOverview, getCustomerRanking, getYoYData,
   getStaffPerformance, getTargetVsActual, getTargets,
   getStaffMembers, upsertTarget,
+  getCollectionMetrics, getUnpaidInvoices,
   type DashboardOverview, type CustomerRankingItem,
   type YoYMonthlyPoint, type StaffPerformance as StaffPerformanceType,
   type StaffTargetVsActual, type StaffMember, type StaffMonthlyTarget,
+  type CollectionMetrics, type UnpaidInvoice,
 } from "../lib/api";
 
 const CustomerRanking = dynamic(() => import("../components/dashboard/CustomerRanking"), { ssr: false });
@@ -17,6 +19,7 @@ const YoYGrowthChart = dynamic(() => import("../components/dashboard/YoYGrowthCh
 const StaffPerformanceView = dynamic(() => import("../components/dashboard/StaffPerformance"), { ssr: false });
 const TargetTracking = dynamic(() => import("../components/dashboard/TargetTracking"), { ssr: false });
 const TargetSettingsModal = dynamic(() => import("../components/dashboard/TargetSettingsModal"), { ssr: false });
+const PaymentOverview = dynamic(() => import("../components/dashboard/PaymentOverview"), { ssr: false });
 
 function yen(value: number) {
   const n = Number(value);
@@ -53,6 +56,8 @@ export default function DashboardPage() {
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [targets, setTargets] = useState<StaffMonthlyTarget[]>([]);
   const [showTargetModal, setShowTargetModal] = useState(false);
+  const [collectionMetrics, setCollectionMetrics] = useState<CollectionMetrics | null>(null);
+  const [unpaidInvoices, setUnpaidInvoices] = useState<UnpaidInvoice[] | null>(null);
   const [tabLoading, setTabLoading] = useState(false);
 
   const load = async () => {
@@ -98,6 +103,15 @@ export default function DashboardPage() {
             setTargetData(tva);
             setStaffMembers(sm);
             setTargets(tg);
+          }
+        } else if (activeTab === "payments" && !collectionMetrics) {
+          const [metrics, invs] = await Promise.all([
+            getCollectionMetrics(),
+            getUnpaidInvoices(),
+          ]);
+          if (!cancelled) {
+            setCollectionMetrics(metrics);
+            setUnpaidInvoices(invs);
           }
         }
       } catch (e) {
@@ -245,6 +259,7 @@ export default function DashboardPage() {
           { id: "yoy", label: "前年比" },
           { id: "staff", label: "スタッフ実績" },
           { id: "targets", label: "目標管理" },
+          { id: "payments", label: "入金管理" },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -319,6 +334,11 @@ export default function DashboardPage() {
         <StaffPerformanceView data={staffPerf || []} />
       ) : activeTab === "targets" ? (
         <TargetTracking data={targetData || []} onEditTargets={() => setShowTargetModal(true)} />
+      ) : activeTab === "payments" ? (
+        tabLoading ? <p>読み込み中...</p> :
+        collectionMetrics && unpaidInvoices ? (
+          <PaymentOverview metrics={collectionMetrics} invoices={unpaidInvoices} />
+        ) : null
       ) : null}
 
       {showTargetModal && (

@@ -15,6 +15,7 @@ import {
   sbGetStaffMembers, sbGetCustomerRanking, sbGetYoYData,
   sbGetStaffPerformance, sbGetTargets, sbUpsertTarget,
   sbGetTargetVsActual, sbUpdateProjectStaff,
+  sbGetCollectionMetrics, sbGetUnpaidInvoices, sbGetUpcomingPaymentReminders,
 } from "./api/supabase-ops";
 export type { OrgInfo, OrgSettings } from "./api/supabase-ops";
 
@@ -27,6 +28,7 @@ export type Customer = {
   customer_name: string;
   contact_name?: string | null;
   phone?: string | null;
+  email?: string | null;
   monthly_volume?: string | null;
   status: string;
 };
@@ -181,7 +183,7 @@ export type DashboardSummary = {
   item_total_amount: number;
 };
 
-export type { CustomerRankingItem, YoYMonthlyPoint, StaffPerformance, StaffMonthlyTarget, StaffTargetVsActual, StaffMember } from "./api/types";
+export type { CustomerRankingItem, YoYMonthlyPoint, StaffPerformance, StaffMonthlyTarget, StaffTargetVsActual, StaffMember, AgingBucket, UnpaidInvoice, CollectionMetrics } from "./api/types";
 
 // ============================================================
 // Utilities
@@ -223,8 +225,8 @@ export function marginRate(selling: number, cost: number) {
 // ============================================================
 
 export async function getCustomers() { return sbGetCustomers(); }
-export async function createCustomer(payload: { customer_name: string; contact_name?: string; phone?: string; monthly_volume?: string; status?: string }) { return sbCreateCustomer(payload); }
-export async function updateCustomer(customerId: string, payload: Partial<{ customer_name: string; contact_name: string; phone: string; monthly_volume: string; status: string }>) { return sbUpdateCustomer(customerId, payload); }
+export async function createCustomer(payload: { customer_name: string; contact_name?: string; phone?: string; email?: string; monthly_volume?: string; status?: string }) { return sbCreateCustomer(payload); }
+export async function updateCustomer(customerId: string, payload: Partial<{ customer_name: string; contact_name: string; phone: string; email: string; monthly_volume: string; status: string }>) { return sbUpdateCustomer(customerId, payload); }
 export async function deleteCustomer(customerId: string) { return sbDeleteCustomer(customerId); }
 
 export async function getVendors() { return sbGetVendors(); }
@@ -351,6 +353,10 @@ export async function getTargets(year: number) { return sbGetTargets(year); }
 export async function upsertTarget(target: import("./api/types").StaffMonthlyTarget) { return sbUpsertTarget(target); }
 export async function getTargetVsActual(year: number, month?: number) { return sbGetTargetVsActual(year, month); }
 export async function updateProjectStaff(projectId: string, staffId: string | null) { return sbUpdateProjectStaff(projectId, staffId); }
+
+export async function getCollectionMetrics() { return sbGetCollectionMetrics(); }
+export async function getUnpaidInvoices() { return sbGetUnpaidInvoices(); }
+export async function getUpcomingPaymentReminders(daysAhead?: number) { return sbGetUpcomingPaymentReminders(daysAhead); }
 
 // ============================================================
 // Blob helper

@@ -7,6 +7,7 @@ export type Customer = {
   customer_name: string;
   contact_name?: string | null;
   phone?: string | null;
+  email?: string | null;
   monthly_volume?: string | null;
   status: string;
 };
@@ -215,4 +216,32 @@ export type StaffMember = {
   id: string;
   display_name: string;
   role: string;
+};
+
+export type AgingBucket = {
+  label: string;
+  count: number;
+  total_amount: number;
+};
+
+export type UnpaidInvoice = {
+  invoice_id: string;
+  project_id: string;
+  project_name: string;
+  customer_name: string;
+  customer_email?: string | null;
+  invoice_amount: number;
+  remaining_amount: number;
+  due_date: string;
+  days_overdue: number;
+  aging_category: string;
+};
+
+export type CollectionMetrics = {
+  dso: number;
+  collection_rate: number;
+  total_receivable: number;
+  total_overdue: number;
+  overdue_count: number;
+  aging_buckets: AgingBucket[];
 };

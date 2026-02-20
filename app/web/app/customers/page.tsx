@@ -17,6 +17,7 @@ type FormData = {
   customer_name: string;
   contact_name: string;
   phone: string;
+  email: string;
   monthly_volume: string;
   status: string;
 };
@@ -25,6 +26,7 @@ const EMPTY_FORM: FormData = {
   customer_name: "",
   contact_name: "",
   phone: "",
+  email: "",
   monthly_volume: "",
   status: "新規",
 };
@@ -141,6 +143,18 @@ function CustomerModal({
 
           <label>
             <span style={{ fontSize: "13px", fontWeight: 500, display: "block", marginBottom: "4px" }}>
+              メールアドレス
+            </span>
+            <input
+              type="email"
+              value={form.email}
+              onChange={(e) => onChange("email", e.target.value)}
+              placeholder="info@example.com"
+            />
+          </label>
+
+          <label>
+            <span style={{ fontSize: "13px", fontWeight: 500, display: "block", marginBottom: "4px" }}>
               月間取引量
             </span>
             <input
@@ -248,6 +262,7 @@ export default function CustomersPage() {
       customer_name: customer.customer_name,
       contact_name: customer.contact_name ?? "",
       phone: customer.phone ?? "",
+      email: customer.email ?? "",
       monthly_volume: customer.monthly_volume ?? "",
       status: customer.status || "新規",
     });
@@ -280,6 +295,7 @@ export default function CustomersPage() {
         customer_name: name,
         contact_name: form.contact_name.trim() || undefined,
         phone: form.phone.trim() || undefined,
+        email: form.email.trim() || undefined,
         monthly_volume: form.monthly_volume.trim() || undefined,
         status: form.status,
       };
@@ -373,6 +389,7 @@ export default function CustomersPage() {
                   <th>顧客名</th>
                   <th>担当者名</th>
                   <th>電話番号</th>
+                  <th>メール</th>
                   <th>月間取引量</th>
                   <th>ステータス</th>
                   <th>操作</th>
@@ -384,6 +401,7 @@ export default function CustomersPage() {
                     <td>{c.customer_name}</td>
                     <td>{c.contact_name ?? "-"}</td>
                     <td>{c.phone ?? "-"}</td>
+                    <td>{c.email || "\u2014"}</td>
                     <td>{c.monthly_volume ?? "-"}</td>
                     <td>
                       <span className={statusBadgeClass(c.status)}>

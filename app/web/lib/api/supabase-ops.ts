@@ -10,6 +10,7 @@ import type {
   DashboardMonthlySalesPoint, DashboardActiveProject,
   CustomerRankingItem, YoYMonthlyPoint, StaffPerformance,
   StaffMonthlyTarget, StaffTargetVsActual, StaffMember,
+  CollectionMetrics, UnpaidInvoice,
 } from "./types";
 
 function supabase() { return createClient(); }
@@ -75,6 +76,7 @@ function toCustomer(row: Record<string, unknown>): Customer {
     customer_name: row.customer_name as string,
     contact_name: row.contact_name as string | null,
     phone: row.phone as string | null,
+    email: (row.email as string | null) ?? null,
     monthly_volume: row.monthly_volume as string | null,
     status: row.status as string,
   };
@@ -186,6 +188,7 @@ export async function sbCreateCustomer(payload: {
   customer_name: string;
   contact_name?: string;
   phone?: string;
+  email?: string;
   monthly_volume?: string;
   status?: string;
 }): Promise<Customer> {
@@ -197,6 +200,7 @@ export async function sbCreateCustomer(payload: {
       customer_name: payload.customer_name.trim(),
       contact_name: payload.contact_name?.trim() || null,
       phone: payload.phone?.trim() || null,
+      email: payload.email?.trim() || null,
       monthly_volume: payload.monthly_volume?.trim() || null,
       status: payload.status ?? "取引中",
     })
@@ -210,6 +214,7 @@ export async function sbUpdateCustomer(customerId: string, payload: Partial<{
   customer_name: string;
   contact_name: string;
   phone: string;
+  email: string;
   monthly_volume: string;
   status: string;
 }>): Promise<Customer> {
@@ -217,6 +222,7 @@ export async function sbUpdateCustomer(customerId: string, payload: Partial<{
   if (payload.customer_name !== undefined) updates.customer_name = payload.customer_name.trim();
   if (payload.contact_name !== undefined) updates.contact_name = payload.contact_name.trim() || null;
   if (payload.phone !== undefined) updates.phone = payload.phone.trim() || null;
+  if (payload.email !== undefined) updates.email = payload.email.trim() || null;
   if (payload.monthly_volume !== undefined) updates.monthly_volume = payload.monthly_volume.trim() || null;
   if (payload.status !== undefined) updates.status = payload.status;
 
@@ -1440,4 +1446,178 @@ export async function sbUpdateProjectStaff(projectId: string, staffId: string | 
     .single();
   if (error || !data) throw new Error("担当者更新失敗: " + (error?.message ?? ""));
   return toProject(data);
+}
+
+// ============================================================
+// Collection Metrics (入金管理指標)
+// ============================================================
+
+export async function sbGetCollectionMetrics(): Promise<CollectionMetrics> {
+  const orgId = await getOrgId();
+  const { data: invoices, error } = await supabase()
+    .from("invoices")
+    .select("*")
+    .eq("org_id", orgId);
+  if (error) throw new Error("入金指標取得失敗");
+
+  const rows = invoices ?? [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let totalBilled = 0;
+  let totalPaid = 0;
+  let totalReceivable = 0;
+  let totalOverdue = 0;
+  let overdueCount = 0;
+  const buckets: Record<string, { count: number; total: number }> = {
+    "正常": { count: 0, total: 0 },
+    "30日超過": { count: 0, total: 0 },
+    "60日超過": { count: 0, total: 0 },
+    "90日超過": { count: 0, total: 0 },
+  };
+
+  for (const inv of rows) {
+    const amount = safeNum(inv.invoice_amount);
+    const paid = safeNum(inv.paid_amount);
+    const remaining = safeNum(inv.remaining_amount);
+    totalBilled += amount;
+    totalPaid += paid;
+
+    if (remaining <= 0) continue; // 入金済みはスキップ
+    totalReceivable += remaining;
+
+    const due = new Date(inv.due_date);
+    due.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 0) {
+      buckets["正常"].count++;
+      buckets["正常"].total += remaining;
+    } else if (diffDays <= 30) {
+      buckets["30日超過"].count++;
+      buckets["30日超過"].total += remaining;
+      totalOverdue += remaining;
+      overdueCount++;
+    } else if (diffDays <= 60) {
+      buckets["60日超過"].count++;
+      buckets["60日超過"].total += remaining;
+      totalOverdue += remaining;
+      overdueCount++;
+    } else {
+      buckets["90日超過"].count++;
+      buckets["90日超過"].total += remaining;
+      totalOverdue += remaining;
+      overdueCount++;
+    }
+  }
+
+  // DSO = 売掛残高 / (年間売上 / 365)
+  const dso = totalBilled > 0 ? Math.round((totalReceivable / totalBilled) * 365) : 0;
+  // 回収率 = 入金済 / 請求済 * 100
+  const collectionRate = totalBilled > 0 ? Math.round((totalPaid / totalBilled) * 1000) / 10 : 100;
+
+  return {
+    dso,
+    collection_rate: collectionRate,
+    total_receivable: totalReceivable,
+    total_overdue: totalOverdue,
+    overdue_count: overdueCount,
+    aging_buckets: Object.entries(buckets).map(([label, v]) => ({
+      label,
+      count: v.count,
+      total_amount: v.total,
+    })),
+  };
+}
+
+// ============================================================
+// Unpaid Invoices (未入金一覧)
+// ============================================================
+
+export async function sbGetUnpaidInvoices(): Promise<UnpaidInvoice[]> {
+  const orgId = await getOrgId();
+
+  // invoicesを取得
+  const { data: invoices, error } = await supabase()
+    .from("invoices")
+    .select("*")
+    .eq("org_id", orgId)
+    .gt("remaining_amount", 0)
+    .order("due_date", { ascending: true });
+  if (error) throw new Error("未入金一覧取得失敗");
+
+  if (!invoices || invoices.length === 0) return [];
+
+  // project_idsを収集
+  const projectIds = [...new Set(invoices.map(i => i.project_id))];
+
+  // projectsを取得
+  const { data: projects } = await supabase()
+    .from("projects")
+    .select("id, project_name, customer_name, customer_id")
+    .in("id", projectIds);
+
+  const projectMap = new Map((projects ?? []).map(p => [p.id, p]));
+
+  // customer_idsを収集してcustomersを取得
+  const customerIds = [...new Set((projects ?? []).map(p => p.customer_id).filter(Boolean))];
+  let customerMap = new Map<string, { email?: string }>();
+  if (customerIds.length > 0) {
+    const { data: customers } = await supabase()
+      .from("customers")
+      .select("id, email")
+      .in("id", customerIds);
+    customerMap = new Map((customers ?? []).map(c => [c.id, { email: c.email }]));
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return invoices.map(inv => {
+    const proj = projectMap.get(inv.project_id);
+    const cust = proj?.customer_id ? customerMap.get(proj.customer_id) : undefined;
+    const due = new Date(inv.due_date);
+    due.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24));
+    const daysOverdue = Math.max(0, diffDays);
+
+    let aging = "正常";
+    if (diffDays > 90) aging = "90日超過";
+    else if (diffDays > 60) aging = "60日超過";
+    else if (diffDays > 30) aging = "30日超過";
+    else if (diffDays > 0) aging = "30日超過";
+
+    return {
+      invoice_id: inv.id,
+      project_id: inv.project_id,
+      project_name: proj?.project_name ?? "不明",
+      customer_name: proj?.customer_name ?? "不明",
+      customer_email: cust?.email ?? null,
+      invoice_amount: safeNum(inv.invoice_amount),
+      remaining_amount: safeNum(inv.remaining_amount),
+      due_date: inv.due_date,
+      days_overdue: daysOverdue,
+      aging_category: aging,
+    };
+  });
+}
+
+// ============================================================
+// Upcoming Payment Reminders (入金リマインダー)
+// ============================================================
+
+export async function sbGetUpcomingPaymentReminders(daysAhead: number = 3): Promise<UnpaidInvoice[]> {
+  const all = await sbGetUnpaidInvoices();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(today);
+  target.setDate(target.getDate() + daysAhead);
+
+  return all.filter(inv => {
+    if (!inv.customer_email) return false;
+    const due = new Date(inv.due_date);
+    due.setHours(0, 0, 0, 0);
+    // 期日がtoday〜target日後の範囲内
+    return due >= today && due <= target;
+  });
 }
